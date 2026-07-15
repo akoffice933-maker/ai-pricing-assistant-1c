@@ -21,20 +21,82 @@ AI Pricing Market MVP
 
 from __future__ import annotations
 
+import logging
 import math
 import os
+import secrets
+import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-APP_VERSION = "2.0.0-market-mvp"
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+
+    _SLOWAPI_AVAILABLE = True
+except ImportError:  # pragma: no cover - slowapi is an optional prod dependency
+    _SLOWAPI_AVAILABLE = False
+
+APP_VERSION = "2.1.0-production"
 SERVICE_NAME = "AI Pricing Assistant — Market Demand MVP"
+
+# ============================================================
+# Configuration (env-driven; see .env.example)
+# ============================================================
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+IS_PRODUCTION = ENVIRONMENT == "production"
+
 API_TOKEN = os.getenv("AI_PRICING_API_TOKEN")
+if IS_PRODUCTION and not API_TOKEN:
+    # Отказываемся стартовать в production без токена — открытый API-эндпоинт,
+    # считающий бизнес-цены, не должен быть доступен анонимно.
+    raise RuntimeError(
+        "AI_PRICING_API_TOKEN обязателен, когда ENVIRONMENT=production. "
+        "Задайте переменную окружения перед запуском."
+    )
+
+_default_origins = "" if IS_PRODUCTION else "*"
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("AI_PRICING_ALLOWED_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+
+RATE_LIMIT = os.getenv("AI_PRICING_RATE_LIMIT", "60/minute")
+
+LOG_LEVEL = os.getenv("AI_PRICING_LOG_LEVEL", "INFO").upper()
+
+# ============================================================
+# Logging
+# ============================================================
+
+logger = logging.getLogger("ai_pricing")
+logger.setLevel(LOG_LEVEL)
+if not logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(
+        logging.Formatter(
+            fmt='{"ts":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}',
+            datefmt="%Y-%m-%dT%H:%M:%S%z",
+        )
+    )
+    logger.addHandler(_handler)
+
+# ============================================================
+# App + middleware
+# ============================================================
 
 app = FastAPI(
     title=SERVICE_NAME,
@@ -47,16 +109,72 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS or [],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type"],
 )
+
+if _SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address, default_limits=[RATE_LIMIT])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+else:  # pragma: no cover
+    logger.warning(
+        "slowapi не установлен — rate limiting отключён. "
+        "Добавьте slowapi в requirements.txt для production."
+    )
+
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next: Callable) -> Response:
+    """Присваивает request_id, логирует каждый запрос и время выполнения."""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    start = time.perf_counter()
+    response: Optional[Response] = None
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        status_code = response.status_code if response is not None else 500
+        logger.info(
+            "%s %s status=%s duration_ms=%s request_id=%s",
+            request.method,
+            request.url.path,
+            status_code,
+            duration_ms,
+            request_id,
+        )
+        if response is not None:
+            response.headers["X-Request-ID"] = request_id
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    safe_errors = jsonable_encoder(exc.errors(), exclude={"ctx"})
+    logger.warning("validation_error path=%s errors=%s", request.url.path, safe_errors)
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "Некорректные входные данные", "errors": safe_errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Не отдаём наружу стектрейс/детали исключения — только в лог сервера.
+    logger.exception("unhandled_error path=%s", request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Внутренняя ошибка сервера"},
+    )
 
 
 async def verify_api_token(authorization: Optional[str] = Header(default=None)) -> None:
     if not API_TOKEN:
+        # Разрешено только вне production (см. проверку при старте выше).
         return
-    if authorization != f"Bearer {API_TOKEN}":
+    expected = f"Bearer {API_TOKEN}"
+    if not authorization or not secrets.compare_digest(authorization, expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing API token",
@@ -964,7 +1082,19 @@ async def root() -> Dict[str, Any]:
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
+    """Liveness — процесс жив. Не проверяет внешние зависимости (их пока нет)."""
     return {"status": "ok", "service": SERVICE_NAME, "version": APP_VERSION, "timestamp": now_iso()}
+
+
+@app.get("/ready")
+async def ready() -> Dict[str, Any]:
+    """Readiness — сервис сконфигурирован и готов принимать трафик."""
+    checks = {
+        "auth_configured": bool(API_TOKEN) or not IS_PRODUCTION,
+        "cors_configured": bool(ALLOWED_ORIGINS) or not IS_PRODUCTION,
+    }
+    ok = all(checks.values())
+    return {"status": "ok" if ok else "degraded", "checks": checks, "timestamp": now_iso()}
 
 
 @app.get("/model_info")
@@ -981,9 +1111,18 @@ async def model_info(_: None = Depends(verify_api_token)) -> Dict[str, Any]:
     }
 
 
+def _rate_limit(spec: str) -> Callable:
+    """No-op decorator when slowapi isn't installed, so routes stay importable."""
+    if _SLOWAPI_AVAILABLE:
+        return limiter.limit(spec)
+    return lambda func: func
+
+
 @app.post("/market/calculate_indicators", response_model=MarketIndicatorsCalculationResponse)
+@_rate_limit(RATE_LIMIT)
 async def calculate_market_indicators(
-    request: MarketIndicatorsCalculationRequest,
+    request: Request,
+    body: MarketIndicatorsCalculationRequest,
     _: None = Depends(verify_api_token),
 ) -> MarketIndicatorsCalculationResponse:
     """
@@ -993,41 +1132,49 @@ async def calculate_market_indicators(
     может отправить набор наблюдений, а сервис вернёт нормализованные индикаторы
     для регистра 1С `AI_РыночныеИндикаторы`.
     """
-    return calculate_market_context_from_observations(request)
+    return calculate_market_context_from_observations(body)
 
 
 @app.post("/market/calculate_indicators/export_1c", response_model=List[Dict[str, Any]])
+@_rate_limit(RATE_LIMIT)
 async def calculate_market_indicators_export_1c(
-    request: MarketIndicatorsCalculationRequest,
+    request: Request,
+    body: MarketIndicatorsCalculationRequest,
     _: None = Depends(verify_api_token),
 ) -> List[Dict[str, Any]]:
     """Возвращает массив записей, совместимый с 1С loader `AI_РыночныеИндикаторы`."""
-    result = calculate_market_context_from_observations(request)
+    result = calculate_market_context_from_observations(body)
     return [result.one_c_indicator_record]
 
 
 @app.post("/skills/forecast_demand_curve", response_model=DemandCurveResponse)
+@_rate_limit(RATE_LIMIT)
 async def forecast_demand_curve(
-    request: DemandCurveRequest,
+    request: Request,
+    body: DemandCurveRequest,
     _: None = Depends(verify_api_token),
 ) -> DemandCurveResponse:
-    return demand_skill.forecast(request)
+    return demand_skill.forecast(body)
 
 
 @app.post("/skills/optimize_price", response_model=PriceOptimizationResponse)
+@_rate_limit(RATE_LIMIT)
 async def optimize_price(
-    request: PriceOptimizationRequest,
+    request: Request,
+    body: PriceOptimizationRequest,
     _: None = Depends(verify_api_token),
 ) -> PriceOptimizationResponse:
-    return optimizer_skill.optimize(request)
+    return optimizer_skill.optimize(body)
 
 
 @app.post("/skills/recommend_price", response_model=PriceRecommendationResponse)
+@_rate_limit(RATE_LIMIT)
 async def recommend_price(
-    request: PriceRecommendationRequest,
+    request: Request,
+    body: PriceRecommendationRequest,
     _: None = Depends(verify_api_token),
 ) -> PriceRecommendationResponse:
-    return build_recommendation(request)
+    return build_recommendation(body)
 
 
 if __name__ == "__main__":

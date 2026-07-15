@@ -1,4 +1,4 @@
-"""Minimal smoke tests for AI Pricing Market MVP.
+"""Smoke tests for AI Pricing Market MVP.
 
 Run from this directory:
     pip install -r requirements-dev.txt
@@ -7,6 +7,7 @@ Run from this directory:
 
 from fastapi.testclient import TestClient
 
+import main
 from main import app
 
 client = TestClient(app)
@@ -152,3 +153,109 @@ def test_optimizer_never_violates_min_margin_after_fallback_and_rounding():
     data = response.json()
     assert data["recommended_price"] >= 90 / (1 - 0.30) - 0.01
     assert data["expected_margin_percent"] >= 30 - 0.01
+
+
+# ---------------------------------------------------------------------------
+# Readiness
+# ---------------------------------------------------------------------------
+
+
+def test_ready():
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert "checks" in response.json()
+
+
+# ---------------------------------------------------------------------------
+# Auth (token enabled via monkeypatched module state)
+# ---------------------------------------------------------------------------
+
+
+def test_protected_endpoint_rejects_missing_token(monkeypatch):
+    monkeypatch.setattr(main, "API_TOKEN", "test-token")
+    response = client.get("/model_info")
+    assert response.status_code == 401
+
+
+def test_protected_endpoint_rejects_wrong_token(monkeypatch):
+    monkeypatch.setattr(main, "API_TOKEN", "test-token")
+    response = client.get("/model_info", headers={"Authorization": "Bearer wrong-token"})
+    assert response.status_code == 401
+
+
+def test_protected_endpoint_accepts_correct_token(monkeypatch):
+    monkeypatch.setattr(main, "API_TOKEN", "test-token")
+    response = client.get("/model_info", headers={"Authorization": "Bearer test-token"})
+    assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_calculate_market_indicators_requires_at_least_one_observation():
+    payload = {
+        "market_category": "wireless_headphones",
+        "region": "LV",
+        "channel": "online",
+        "item_type": "product",
+        "observations": [],
+    }
+    response = client.post("/market/calculate_indicators", json=payload)
+    assert response.status_code == 422
+
+
+def test_recommend_price_rejects_unknown_fields():
+    payload = {
+        "business_goal": "maximize_profit",
+        "item": base_item(),
+        "market_context": base_market(),
+        "unexpected_field": "should fail",
+    }
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 422
+
+
+def test_recommend_price_with_zero_unit_cost_does_not_crash():
+    item = base_item()
+    item["unit_cost"] = 0.0
+    payload = {
+        "business_goal": "maximize_profit",
+        "item": item,
+        "market_context": base_market(),
+    }
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    assert response.json()["recommended_price"] > 0
+
+
+def test_forecast_demand_curve_rejects_single_point_price_grid():
+    payload = {
+        "item": base_item(),
+        "market_context": base_market(),
+        "price_grid": [179.0],
+    }
+    response = client.post("/skills/forecast_demand_curve", json=payload)
+    assert response.status_code == 422
+
+
+def test_forecast_demand_curve_with_available_capacity_caps_demand():
+    item = base_item()
+    item["item_type"] = "service"
+    item["available_capacity"] = 5
+    payload = {"item": item, "market_context": base_market()}
+    response = client.post("/skills/forecast_demand_curve", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert all(point["expected_demand"] <= 5 for point in data["demand_curve"])
+
+
+def test_invalid_business_goal_returns_422():
+    payload = {
+        "business_goal": "not_a_real_goal",
+        "item": base_item(),
+        "market_context": base_market(),
+    }
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 422

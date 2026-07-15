@@ -82,16 +82,46 @@ backend/ai_pricing_market_mvp/
 | `POST /skills/recommend_price` | Оркестратор: строит кривую спроса и оптимизирует цену одним вызовом. |
 | `POST /market/calculate_indicators` | Нормализует сырые наблюдения рынка в `market_context`. |
 | `POST /market/calculate_indicators/export_1c` | Возвращает JSON-массив индикаторов для загрузки в 1С. |
+| `GET /health` | Liveness-проверка. |
+| `GET /ready` | Readiness-проверка (сконфигурирован ли auth/CORS). |
 
-### Быстрый запуск
+### Быстрый запуск (dev)
 
 ```bash
 cd backend/ai_pricing_market_mvp
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 uvicorn main:app --reload --port 8000
 ```
+
+### Тесты
+
+```bash
+cd backend/ai_pricing_market_mvp
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+### Production-запуск
+
+Переменные окружения (см. `.env.example`):
+
+| Переменная | Назначение |
+|---|---|
+| `ENVIRONMENT` | `production` — сервис откажется стартовать без `AI_PRICING_API_TOKEN`. |
+| `AI_PRICING_API_TOKEN` | Bearer-токен для защищённых эндпоинтов. |
+| `AI_PRICING_ALLOWED_ORIGINS` | CORS whitelist через запятую (по умолчанию пусто в production). |
+| `AI_PRICING_RATE_LIMIT` | Лимит запросов, например `60/minute` (требует `slowapi`). |
+| `AI_PRICING_LOG_LEVEL` | Уровень структурированных JSON-логов в stdout. |
+
+```bash
+cd backend/ai_pricing_market_mvp
+cp ../../.env.example .env   # заполнить реальными значениями
+docker compose up --build
+```
+
+CI (`.github/workflows/python-check.yml`) на каждый push/PR в `main` гоняет `ruff`, `pytest` и собирает Docker-образ.
 
 Swagger UI:
 

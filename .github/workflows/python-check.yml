@@ -7,22 +7,23 @@ on:
     branches: [ main ]
 
 jobs:
-  backend-tests:
+  backend-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ai_pricing_market_mvp
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install backend dev dependencies
+      - name: Install dependencies
         run: |
-          cd backend/ai_pricing_market_mvp
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Compile backend and scripts
-        run: |
-          python -m py_compile backend/ai_pricing_market_mvp/main.py scripts/calculate_market_indicators.py
-      - name: Run backend smoke tests
-        run: |
-          cd backend/ai_pricing_market_mvp
-          pytest -q
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Run tests
+        run: pytest -q
+      - name: Build Docker image
+        run: docker build -t ai-pricing-market-mvp:ci .
