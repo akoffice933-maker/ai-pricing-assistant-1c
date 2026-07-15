@@ -1,0 +1,28 @@
+{
+  "request_id": "curve-demo-001",
+  "horizon_days": 30,
+  "price_grid": [169, 179, 189, 199, 209],
+  "item": {
+    "item_id": "000000123",
+    "item_type": "product",
+    "item_name": "Наушники беспроводные X200",
+    "category": "wireless_headphones",
+    "current_price": 179.0,
+    "unit_cost": 128.0,
+    "sales_last_30_days": 240,
+    "sales_last_90_days": 620,
+    "quality_index": 1.08
+  },
+  "market_context": {
+    "market_category": "wireless_headphones",
+    "market_price_median": 189,
+    "competitor_count": 14,
+    "market_demand_index": 1.18,
+    "promo_share": 0.35,
+    "availability_index": 0.78,
+    "seasonality_index": 1.2,
+    "data_freshness_days": 3,
+    "coverage_score": 0.78,
+    "confidence": 0.82
+  }
+}

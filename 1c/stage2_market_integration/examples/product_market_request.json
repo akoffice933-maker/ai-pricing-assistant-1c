@@ -1,0 +1,52 @@
+{
+  "request_id": "product-market-demo-001",
+  "user_id": "manager_1",
+  "business_goal": "maximize_profit",
+  "horizon_days": 30,
+  "item": {
+    "item_id": "000000123",
+    "item_type": "product",
+    "item_name": "Наушники беспроводные X200",
+    "category": "wireless_headphones",
+    "current_price": 179.0,
+    "unit_cost": 128.0,
+    "price_unit": "unit",
+    "currency": "EUR",
+    "sales_last_30_days": 240,
+    "sales_last_90_days": 620,
+    "stock_quantity": 180,
+    "target_margin_percent": 30,
+    "quality_index": 1.08
+  },
+  "market_context": {
+    "market_category": "wireless_headphones",
+    "region": "LV",
+    "channel": "online",
+    "period": "2026-07",
+    "market_price_min": 170,
+    "market_price_p25": 179,
+    "market_price_median": 189,
+    "market_price_avg": 192,
+    "market_price_p75": 205,
+    "market_price_max": 229,
+    "competitor_count": 14,
+    "active_competitor_count": 11,
+    "market_demand_index": 1.18,
+    "search_trend_index": 1.24,
+    "category_views_index": 1.15,
+    "promo_share": 0.35,
+    "availability_index": 0.78,
+    "seasonality_index": 1.2,
+    "data_freshness_days": 3,
+    "source_count": 12,
+    "coverage_score": 0.78,
+    "confidence": 0.82
+  },
+  "constraints": {
+    "min_margin_percent": 20,
+    "max_price_increase_percent": 20,
+    "max_price_decrease_percent": 30,
+    "price_ending": 0.99,
+    "min_confidence_for_apply": 0.70
+  }
+}

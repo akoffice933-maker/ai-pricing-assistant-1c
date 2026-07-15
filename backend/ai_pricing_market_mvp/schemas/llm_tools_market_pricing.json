@@ -1,0 +1,58 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "forecast_demand_curve",
+      "description": "Строит кривую спроса при разных ценах относительно общего рынка. LLM не должна прогнозировать спрос сама.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "item": { "type": "object" },
+          "market_context": { "type": "object" },
+          "horizon_days": { "type": "integer", "minimum": 1, "maximum": 365 },
+          "price_grid": { "type": "array", "items": { "type": "number" } }
+        },
+        "required": ["item", "market_context"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "optimize_price",
+      "description": "Выбирает цену по кривой спроса, бизнес-цели и ограничениям маржи. LLM не должна выбирать цену рассуждением.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_goal": {
+            "type": "string",
+            "enum": ["maximize_profit", "maximize_revenue", "grow_market_share", "clear_stock", "premium_positioning", "maximize_utilization"]
+          },
+          "item": { "type": "object" },
+          "market_context": { "type": "object" },
+          "demand_curve": { "type": "array", "items": { "type": "object" } },
+          "constraints": { "type": "object" }
+        },
+        "required": ["item", "market_context", "demand_curve"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "recommend_price",
+      "description": "Оркестратор: строит кривую спроса и оптимизирует цену под бизнес-цель. LLM вызывает этот инструмент вместо прямого расчёта цены.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "business_goal": { "type": "string" },
+          "item": { "type": "object" },
+          "market_context": { "type": "object" },
+          "horizon_days": { "type": "integer" },
+          "constraints": { "type": "object" }
+        },
+        "required": ["item", "market_context"]
+      }
+    }
+  }
+]

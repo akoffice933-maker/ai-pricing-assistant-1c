@@ -1,0 +1,3 @@
+period;market_category;region;channel;item_type;source;market_price_min;market_price_median;market_price_avg;market_price_max;competitor_count;market_demand_index;promo_share;availability_index;seasonality_index;data_freshness_days;source_count;coverage_score;confidence;currency
+2026-07;wireless_headphones;LV;online;product;manual_demo;170;189;192;229;14;1.18;0.35;0.78;1.2;3;12;0.78;0.82;EUR
+2026-07;1c_implementation_services;LV;b2b_direct;service;manual_demo;70;110;120;180;8;1.25;0.1;0.72;1.0;14;8;0.72;0.76;EUR

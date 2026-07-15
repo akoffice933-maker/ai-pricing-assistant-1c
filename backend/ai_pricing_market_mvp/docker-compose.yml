@@ -1,0 +1,8 @@
+services:
+  ai-pricing-market-mvp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      # AI_PRICING_API_TOKEN: "secret-token"
