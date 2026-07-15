@@ -51,7 +51,10 @@ Content-Type: application/json
     "max_price_decrease_percent": 30,
     "price_ending": 0.99,
     "min_confidence_for_apply": 0.70
-  }
+  },
+  "baseline_market_demand_index": 1.0,
+  "baseline_promo_share": 0.0,
+  "baseline_availability_index": 1.0
 }
 ```
 
@@ -63,6 +66,8 @@ Content-Type: application/json
   "item_id": "000000123",
   "item_name": "Наушники X200",
   "item_type": "product",
+  "price_unit": "unit",
+  "currency": "EUR",
   "market_category": "wireless_headphones",
   "business_goal": "maximize_profit",
   "current_price": 179.0,
@@ -138,3 +143,10 @@ Content-Type: application/json
 | `promo_share` | `AI_РыночныеИндикаторы.PromoShare` |
 | `availability_index` | `AI_РыночныеИндикаторы.AvailabilityIndex` |
 | `confidence` | `AI_РыночныеИндикаторы.Confidence` |
+
+
+## Baseline market fields
+
+Поля `baseline_market_demand_index`, `baseline_promo_share`, `baseline_availability_index` описывают рынок периода, из которого взяты `sales_last_30_days` и `sales_last_90_days`.
+
+Если их не передать, backend считает baseline нормальным рынком (`1.0`). Это важно, чтобы forecast `market_demand_index` реально влиял на кривую спроса, а не сокращался при калибровке по историческим продажам.

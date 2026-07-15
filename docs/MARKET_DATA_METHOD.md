@@ -64,10 +64,31 @@ freshness_penalty = 0.82, если data_freshness_days > 14
 freshness_penalty = 0.65, если data_freshness_days > 30
 ```
 
+## Baseline и forecast market
+
+Чтобы рыночный индекс не сокращался при калибровке по историческим продажам, модель разделяет:
+
+```text
+baseline_market_*  — рынок периода, из которого взяты sales_last_30/90
+forecast market_context — рынок периода, для которого строится рекомендация
+```
+
+Если baseline не передан, MVP считает baseline нормальным рынком:
+
+```text
+baseline_market_demand_index = 1.0
+baseline_promo_share = 0.0
+baseline_availability_index = 1.0
+```
+
+## Важное правило сезонности
+
+В MVP `market_demand_index`, рассчитанный из `/market/calculate_indicators`, уже включает сезонность. Поэтому в demand model он не умножается на `seasonality_index` повторно.
+
 ## Production
 
 В production эти правила нужно заменить обучаемой моделью/калибровкой по истории:
 
 ```text
-история цен + история спроса + рынок → эластичность и спрос
+история цен + история спроса + baseline market + forecast market → эластичность и спрос
 ```

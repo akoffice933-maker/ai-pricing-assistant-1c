@@ -81,6 +81,7 @@ backend/ai_pricing_market_mvp/
 | `POST /skills/optimize_price` | Выбирает цену по кривой спроса и бизнес-ограничениям. |
 | `POST /skills/recommend_price` | Оркестратор: строит кривую спроса и оптимизирует цену одним вызовом. |
 | `POST /market/calculate_indicators` | Нормализует сырые наблюдения рынка в `market_context`. |
+| `POST /market/calculate_indicators/export_1c` | Возвращает JSON-массив индикаторов для загрузки в 1С. |
 
 ### Быстрый запуск
 

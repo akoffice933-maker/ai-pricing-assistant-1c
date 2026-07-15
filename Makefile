@@ -12,7 +12,7 @@ run-backend:
 	cd backend/ai_pricing_market_mvp && uvicorn main:app --reload --port 8000
 
 test-backend:
-	cd backend/ai_pricing_market_mvp && python -m py_compile main.py && pytest tests_smoke.py
+	cd backend/ai_pricing_market_mvp && python -m py_compile main.py && pytest -q
 
 smoke-market:
 	python scripts/calculate_market_indicators.py \
