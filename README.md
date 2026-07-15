@@ -80,6 +80,7 @@ backend/ai_pricing_market_mvp/
 | `POST /skills/forecast_demand_curve` | Строит кривую спроса `цена → ожидаемый спрос`. |
 | `POST /skills/optimize_price` | Выбирает цену по кривой спроса и бизнес-ограничениям. |
 | `POST /skills/recommend_price` | Оркестратор: строит кривую спроса и оптимизирует цену одним вызовом. |
+| `POST /market/calculate_indicators` | Нормализует сырые наблюдения рынка в `market_context`. |
 
 ### Быстрый запуск
 

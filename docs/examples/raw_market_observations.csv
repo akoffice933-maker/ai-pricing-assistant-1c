@@ -1,0 +1,10 @@
+period,market_category,region,channel,item_type,price,competitor_id,source,is_promo,is_available,delivery_days,data_freshness_days,search_trend_index,category_views_index,seasonality_index,currency
+2026-07,wireless_headphones,LV,online,product,179,shop_01,manual,true,true,2,3,1.24,1.15,1.2,EUR
+2026-07,wireless_headphones,LV,online,product,189,shop_02,manual,false,true,3,3,1.24,1.15,1.2,EUR
+2026-07,wireless_headphones,LV,online,product,192,shop_03,manual,false,true,4,3,1.24,1.15,1.2,EUR
+2026-07,wireless_headphones,LV,online,product,205,shop_04,manual,true,false,7,5,1.24,1.15,1.2,EUR
+2026-07,wireless_headphones,LV,online,product,229,shop_05,manual,false,true,2,4,1.24,1.15,1.2,EUR
+2026-07,1c_implementation_services,LV,b2b_direct,service,70,agency_01,manual,false,true,0,10,1.1,1.0,1.0,EUR
+2026-07,1c_implementation_services,LV,b2b_direct,service,110,agency_02,manual,false,true,0,12,1.1,1.0,1.0,EUR
+2026-07,1c_implementation_services,LV,b2b_direct,service,120,agency_03,manual,false,true,0,14,1.1,1.0,1.0,EUR
+2026-07,1c_implementation_services,LV,b2b_direct,service,180,agency_04,manual,false,true,0,14,1.1,1.0,1.0,EUR
