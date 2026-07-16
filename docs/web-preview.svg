@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="920" viewBox="0 0 1400 920" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1400" y2="920" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.55" stop-color="#0e1b31"/>
+      <stop offset="1" stop-color="#13284a"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="120" y1="120" x2="1280" y2="800" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13223d" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#0d1728" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="220" y1="110" x2="1180" y2="780" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7cf7d4"/>
+      <stop offset="0.55" stop-color="#63b3ff"/>
+      <stop offset="1" stop-color="#f2a65a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1400" height="920" fill="url(#bg)"/>
+  <circle cx="1220" cy="120" r="190" fill="#7cf7d4" fill-opacity="0.12"/>
+  <circle cx="260" cy="760" r="220" fill="#63b3ff" fill-opacity="0.10"/>
+  <circle cx="1140" cy="760" r="160" fill="#f2a65a" fill-opacity="0.10"/>
+
+  <rect x="80" y="60" width="1240" height="800" rx="34" fill="url(#panel)" stroke="#2a3e63" stroke-opacity="0.7" filter="url(#shadow)"/>
+
+  <rect x="120" y="100" width="1160" height="52" rx="16" fill="#0c1728" stroke="#2a3e63" stroke-opacity="0.7"/>
+  <circle cx="152" cy="126" r="7" fill="#ff6b6b"/>
+  <circle cx="176" cy="126" r="7" fill="#ffd166"/>
+  <circle cx="200" cy="126" r="7" fill="#7cf7d4"/>
+  <text x="248" y="133" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="600">AI Pricing Assistant for 1C</text>
+  <text x="1030" y="133" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Web version preview</text>
+
+  <rect x="120" y="182" width="360" height="606" rx="28" fill="#0f1b31" stroke="#2a3e63" stroke-opacity="0.8"/>
+  <text x="152" y="228" fill="#f7fbff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="32" font-weight="700">Landing</text>
+  <text x="152" y="258" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Market-aware pricing for 1C</text>
+
+  <rect x="152" y="300" width="296" height="110" rx="20" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="178" y="336" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="600">Market Context</text>
+  <text x="178" y="362" fill="#7cf7d4" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="36" font-weight="700">1.18x</text>
+  <text x="260" y="360" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">demand index</text>
+  <rect x="178" y="378" width="244" height="10" rx="5" fill="#1f3357"/>
+  <rect x="178" y="378" width="176" height="10" rx="5" fill="url(#accent)"/>
+
+  <rect x="152" y="430" width="296" height="110" rx="20" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="178" y="466" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="600">Optimized price</text>
+  <text x="178" y="494" fill="#ffffff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="40" font-weight="800">189.99</text>
+  <text x="322" y="494" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">EUR / unit</text>
+  <text x="178" y="522" fill="#7cf7d4" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">+5.8% vs current</text>
+
+  <rect x="152" y="560" width="296" height="202" rx="20" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="178" y="596" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="600">Decision trail</text>
+  <text x="178" y="628" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">- Market median: 189</text>
+  <text x="178" y="656" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">- Confidence: 0.82</text>
+  <text x="178" y="684" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">- Recommended action: draft</text>
+  <text x="178" y="712" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">- 1C audit and approval required</text>
+  <rect x="178" y="730" width="242" height="22" rx="11" fill="#183b33"/>
+  <text x="198" y="746" fill="#7cf7d4" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="700">AI recommends, 1C approves</text>
+
+  <rect x="516" y="182" width="336" height="606" rx="28" fill="#0f1b31" stroke="#2a3e63" stroke-opacity="0.8"/>
+  <text x="548" y="228" fill="#f7fbff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="32" font-weight="700">Dashboard</text>
+  <text x="548" y="258" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">Demand curve and constraints</text>
+
+  <rect x="548" y="300" width="272" height="124" rx="18" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <path d="M568 394 C606 360, 636 360, 662 330 C690 298, 724 304, 780 334" stroke="url(#accent)" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M568 384 C600 372, 634 366, 662 350 C691 334, 724 330, 780 336" stroke="#7cf7d4" stroke-width="2" stroke-dasharray="6 7" fill="none" opacity="0.8"/>
+  <text x="568" y="324" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" font-weight="600">Demand curve</text>
+  <text x="568" y="414" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13">price -> demand</text>
+
+  <rect x="548" y="448" width="272" height="334" rx="18" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="568" y="482" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" font-weight="600">Constraints</text>
+  <text x="568" y="516" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">min margin</text>
+  <rect x="676" y="504" width="122" height="10" rx="5" fill="#1f3357"/>
+  <rect x="676" y="504" width="84" height="10" rx="5" fill="#63b3ff"/>
+  <text x="568" y="552" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">max increase</text>
+  <rect x="676" y="540" width="122" height="10" rx="5" fill="#1f3357"/>
+  <rect x="676" y="540" width="96" height="10" rx="5" fill="#f2a65a"/>
+  <text x="568" y="588" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">target demand</text>
+  <rect x="676" y="576" width="122" height="10" rx="5" fill="#1f3357"/>
+  <rect x="676" y="576" width="110" height="10" rx="5" fill="#7cf7d4"/>
+  <text x="568" y="624" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">confidence</text>
+  <rect x="676" y="612" width="122" height="10" rx="5" fill="#1f3357"/>
+  <rect x="676" y="612" width="101" height="10" rx="5" fill="#b28dff"/>
+  <text x="568" y="672" fill="#f7fbff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Ready for 1C handoff</text>
+  <text x="568" y="700" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Audit trail, explanation, and approval workflow.</text>
+
+  <rect x="876" y="182" width="404" height="606" rx="28" fill="#0f1b31" stroke="#2a3e63" stroke-opacity="0.8"/>
+  <text x="908" y="228" fill="#f7fbff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="32" font-weight="700">ROI</text>
+  <text x="908" y="258" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16">What business sees</text>
+
+  <rect x="908" y="300" width="340" height="140" rx="20" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="936" y="338" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">Expected revenue</text>
+  <text x="936" y="384" fill="#ffffff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="46" font-weight="800">+12.4%</text>
+  <text x="936" y="414" fill="#7cf7d4" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">versus baseline pricing</text>
+
+  <rect x="908" y="468" width="340" height="124" rx="20" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="936" y="506" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="600">Signals</text>
+  <text x="936" y="538" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">market demand index 1.18</text>
+  <text x="936" y="562" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">promo share 35%</text>
+  <text x="936" y="586" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">availability index 0.78</text>
+
+  <rect x="908" y="620" width="340" height="164" rx="20" fill="#12243f" stroke="#35517e" stroke-opacity="0.7"/>
+  <text x="936" y="658" fill="#dbe7ff" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="600">Flow</text>
+  <text x="936" y="690" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">LLM -> FastAPI skills layer</text>
+  <text x="936" y="716" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">FastAPI -> 1C audit action</text>
+  <text x="936" y="742" fill="#8ea4c7" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14">1C -> human approval</text>
+  <rect x="936" y="754" width="178" height="20" rx="10" fill="url(#accent)"/>
+  <text x="955" y="769" fill="#07111f" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="12" font-weight="800">Open in browser</text>
+</svg>
