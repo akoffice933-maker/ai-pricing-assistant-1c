@@ -485,6 +485,8 @@ class PriceRecommendationResponse(BaseModel):
     explanation: Dict[str, List[str]]
     warnings: List[str]
     recommended_action: Dict[str, Any]
+    price_bounds: Dict[str, float]
+    rejected_points: List[Dict[str, Any]]
     model_version: str
     calculation_timestamp: str
 
@@ -1074,6 +1076,11 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
         },
         warnings=optimization.warnings,
         recommended_action=optimization.recommended_action,
+        price_bounds={
+            "lower_bound": optimization.constraints["lower_bound"],
+            "upper_bound": optimization.constraints["upper_bound"],
+        },
+        rejected_points=optimization.rejected_points,
         model_version=f"{demand_skill.version}+{optimizer_skill.version}",
         calculation_timestamp=now_iso(),
     )

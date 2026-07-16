@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #C0622A;
+  color: #14181B;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2C3438 transparent;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid #E08A52;
+  outline-offset: 2px;
+}

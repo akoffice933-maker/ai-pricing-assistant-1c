@@ -355,3 +355,18 @@ def test_response_includes_request_id_header():
 def test_custom_request_id_is_echoed_back():
     response = client.get("/health", headers={"X-Request-ID": "test-req-123"})
     assert response.headers["X-Request-ID"] == "test-req-123"
+
+
+def test_recommend_price_exposes_price_bounds_and_rejected_points():
+    payload = {
+        "business_goal": "maximize_profit",
+        "item": base_item(),
+        "market_context": base_market(),
+    }
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "price_bounds" in data
+    assert data["price_bounds"]["lower_bound"] <= data["price_bounds"]["upper_bound"]
+    assert "rejected_points" in data
+    assert isinstance(data["rejected_points"], list)
