@@ -842,6 +842,17 @@ class PriceOptimizerSkill:
             # После округления и clamp пересчитываем финансовые показатели приближённо на выбранном спросе.
             selected = self._with_price(selected, bounded_price, item)
 
+        target_demand = self._goal_target_demand(request.business_goal, item, request.demand_curve)
+        if target_demand and target_demand > 0:
+            deviation = abs(selected.expected_demand - target_demand) / target_demand
+            if deviation > 0.25:
+                warnings.append(
+                    f"Целевой спрос по бизнес-цели ({target_demand:.1f}) недостижим в рамках текущих "
+                    f"ограничений цены; фактический прогнозный спрос при рекомендованной цене — "
+                    f"{selected.expected_demand:.1f}. Рассмотрите смягчение max_price_increase_percent / "
+                    f"max_price_decrease_percent, либо ручной пересмотр остатка/мощности."
+                )
+
         is_reliable = selected.confidence >= constraints.min_confidence_for_apply
         explanation = self._explain_selection(request, selected, lower_bound, upper_bound)
 
@@ -889,6 +900,16 @@ class PriceOptimizerSkill:
         if min_margin_percent >= 95:
             min_margin_percent = 95
         return unit_cost / (1 - min_margin_percent / 100)
+
+    def _goal_target_demand(
+        self, goal: BusinessGoal, item: ItemData, points: List[DemandPoint]
+    ) -> Optional[float]:
+        """Целевой спрос, которого пытается достичь бизнес-цель (если применимо)."""
+        if goal == BusinessGoal.CLEAR_STOCK and item.stock_quantity is not None:
+            return min(item.stock_quantity, max(p.expected_demand for p in points))
+        if goal == BusinessGoal.MAXIMIZE_UTILIZATION and item.available_capacity:
+            return item.available_capacity * 0.85
+        return None
 
     def _select_by_goal(self, points: List[DemandPoint], goal: BusinessGoal, item: ItemData) -> DemandPoint:
         if goal == BusinessGoal.MAXIMIZE_PROFIT:

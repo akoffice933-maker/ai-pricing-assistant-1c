@@ -84,6 +84,16 @@ def test_clear_stock_produces_lower_demand_than_grow_market_share():
     assert clear_stock_demand < grow_share_demand
 
 
+def test_clear_stock_warns_when_target_unreachable_within_default_constraints():
+    item = base_item()
+    item["stock_quantity"] = 50  # намного ниже спроса при текущей цене; дефолтный +20% его не даст достичь
+    payload = {"business_goal": "clear_stock", "item": item, "market_context": base_market()}
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert any("недостижим" in w for w in data["warnings"])
+
+
 def test_maximize_utilization_targets_85_percent_of_capacity():
     item = base_item(item_type="service", available_capacity=100)
     payload = {"business_goal": "maximize_utilization", "item": item, "market_context": base_market()}
