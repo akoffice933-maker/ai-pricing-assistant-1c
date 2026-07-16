@@ -14,6 +14,10 @@ Market Context → Demand Curve → Price Optimization → 1С audit/action
 
 Ниже показан визуальный preview веб-интерфейса проекта: landing, dashboard и ROI-панель.
 
+Открыть веб-версию на GitHub Pages:
+
+- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/
+
 ![Web preview](docs/web-preview.svg)
 
 Что видно в веб-версии:
