@@ -1,7 +1,6 @@
 """
 AI Pricing Market MVP
-=====================
-
+==============
 Рабочий FastAPI-прототип новой архитектуры:
 
     Market Context -> Demand Curve -> Price Optimization -> 1C audit/action
@@ -21,30 +20,80 @@ AI Pricing Market MVP
 
 from __future__ import annotations
 
+import logging
 import math
 import os
+import secrets
+import sys
+import time
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-APP_VERSION = "2.0.0-market-mvp"
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+
+    _SLOWAPI_AVAILABLE = True
+except ImportError:  # pragma: no cover - slowapi is an optional prod dependency
+    _SLOWAPI_AVAILABLE = False
+
+APP_VERSION = "2.1.0-production"
 SERVICE_NAME = "AI Pricing Assistant — Market Demand MVP"
-APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+
+# ============================================================
+# Configuration (env-driven; see .env.example)
+# ============================================================
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+IS_PRODUCTION = ENVIRONMENT == "production"
+
 API_TOKEN = os.getenv("AI_PRICING_API_TOKEN")
+if IS_PRODUCTION and not API_TOKEN:
+    # Отказываемся стартовать в production без токена — открытый API-эндпоинт,
+    # считающий бизнес-цены, не должен быть доступен анонимно.
+    raise RuntimeError(
+        "AI_PRICING_API_TOKEN обязателен, когда ENVIRONMENT=production. "
+        "Задайте переменную окружения перед запуском."
+    )
+
+_default_origins = ""
 ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("AI_PRICING_CORS_ORIGINS", "").split(",")
+    for origin in os.getenv("AI_PRICING_ALLOWED_ORIGINS", _default_origins).split(",")
     if origin.strip()
 ]
 
-if APP_ENV in {"production", "prod"} and not API_TOKEN:
-    raise RuntimeError("AI_PRICING_API_TOKEN must be set when APP_ENV=production")
+RATE_LIMIT = os.getenv("AI_PRICING_RATE_LIMIT", "60/minute")
 
+LOG_LEVEL = os.getenv("AI_PRICING_LOG_LEVEL", "INFO").upper()
+
+# ============================================================
+# Logging
+# ============================================================
+logger = logging.getLogger("ai_pricing")
+logger.setLevel(LOG_LEVEL)
+if not logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(
+        logging.Formatter(
+            fmt='{"ts":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}',
+            datefmt="%Y-%m-%dT%H:%M:%S%z",
+        )
+    )
+    logger.addHandler(_handler)
+
+# ============================================================
+# App + middleware
+# ============================================================
 app = FastAPI(
     title=SERVICE_NAME,
     version=APP_VERSION,
@@ -56,16 +105,72 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_origins=ALLOWED_ORIGINS or [],
+    allow_methods=["GET", "POST"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+if _SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address, default_limits=[RATE_LIMIT])
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+else:  # pragma: no cover
+    logger.warning(
+        "slowapi не установлен — rate limiting отключён. "
+        "Добавьте slowapi в requirements.txt для production."
+    )
+
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next: Callable) -> Response:
+    """Присваивает request_id, логирует каждый запрос и время выполнения."""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    start = time.perf_counter()
+    response: Optional[Response] = None
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        status_code = response.status_code if response is not None else 500
+        logger.info(
+            "%s %s status=%s duration_ms=%s request_id=%s",
+            request.method,
+            request.url.path,
+            status_code,
+            duration_ms,
+            request_id,
+        )
+        if response is not None:
+            response.headers["X-Request-ID"] = request_id
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    safe_errors = jsonable_encoder(exc.errors(), exclude={"ctx"})
+    logger.warning("validation_error path=%s errors=%s", request.url.path, safe_errors)
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": "Некорректные входные данные", "errors": safe_errors},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Не отдаём наружу стектрейс/детали исключения — только в лог сервера.
+    logger.exception("unhandled_error path=%s", request.url.path)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Внутренняя ошибка сервера"},
+    )
 
 
 async def verify_api_token(authorization: Optional[str] = Header(default=None)) -> None:
     if not API_TOKEN:
+        # Разрешено только вне production (см. проверку при старте выше).
         return
-    if authorization != f"Bearer {API_TOKEN}":
+    expected = f"Bearer {API_TOKEN}"
+    if not authorization or not secrets.compare_digest(authorization, expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing API token",
@@ -238,6 +343,7 @@ class MarketIndicatorsCalculationRequest(BaseModel):
 
 class MarketIndicatorsCalculationResponse(BaseModel):
     market_context: MarketContext
+    one_c_indicator_record: Dict[str, Any]
     diagnostics: Dict[str, Any]
     calculation_timestamp: str
 
@@ -252,6 +358,14 @@ class DemandCurveRequest(BaseModel):
     horizon_days: int = Field(30, ge=1, le=365)
     price_grid: Optional[List[float]] = Field(None, description="Если не передан, генерируется автоматически")
     elasticity_override: Optional[float] = Field(None, ge=-10, le=0)
+
+    # Baseline-индексы описывают рынок периода, из которого взяты sales_last_30/90.
+    # Forecast market_context описывает будущий/текущий рынок для рекомендации.
+    # Это не даёт market_demand_index сократиться при калибровке по истории продаж.
+    baseline_market_price_median: Optional[float] = Field(None, gt=0)
+    baseline_market_demand_index: float = Field(1.0, ge=0.05, le=5.0)
+    baseline_promo_share: float = Field(0.0, ge=0, le=1)
+    baseline_availability_index: float = Field(1.0, ge=0, le=1)
 
     @field_validator("price_grid")
     @classmethod
@@ -337,6 +451,10 @@ class PriceRecommendationRequest(BaseModel):
     price_grid: Optional[List[float]] = None
     constraints: PricingConstraints = Field(default_factory=PricingConstraints)
     elasticity_override: Optional[float] = Field(None, ge=-10, le=0)
+    baseline_market_price_median: Optional[float] = Field(None, gt=0)
+    baseline_market_demand_index: float = Field(1.0, ge=0.05, le=5.0)
+    baseline_promo_share: float = Field(0.0, ge=0, le=1)
+    baseline_availability_index: float = Field(1.0, ge=0, le=1)
 
 
 class PriceRecommendationResponse(BaseModel):
@@ -344,6 +462,8 @@ class PriceRecommendationResponse(BaseModel):
     item_id: str
     item_name: str
     item_type: str
+    price_unit: str
+    currency: str
     market_category: str
     business_goal: str
     current_price: float
@@ -442,23 +562,33 @@ def calculate_market_context_from_observations(
         confidence=round(confidence, 4),
     )
 
+    one_c_indicator_record = market_context.model_dump(exclude_none=True)
+    one_c_indicator_record.update(
+        {
+            "item_type": request.item_type.value,
+            "source": "calculated_api",
+            "currency": "EUR",
+            "calculation_method": "POST /market/calculate_indicators",
+        }
+    )
+
     return MarketIndicatorsCalculationResponse(
         market_context=market_context,
+        one_c_indicator_record=one_c_indicator_record,
         diagnostics={
             "observation_count": count,
             "unique_sources": len(sources),
             "unique_competitors": len(competitors),
             "formula": "market_demand_index = avg(search/lead/views)*0.75 + seasonality*0.25, fallback=seasonality",
             "confidence_rule": "confidence = (0.30 + 0.60*coverage_score) * freshness_penalty",
+            "note": "market_demand_index already includes seasonality in this MVP calculator",
         },
         calculation_timestamp=now_iso(),
     )
 
 
-# ============================================================
-# Demand curve skill
-# ============================================================
-
+# =====================================================# Demand curve skill
+# =====================================================
 
 class DemandCurveSkill:
     version = "demand_curve_v1.0.0-market-relative"
@@ -474,13 +604,24 @@ class DemandCurveSkill:
 
         observed_demand = self._observed_demand_for_horizon(item, request.horizon_days)
         current_relative = item.current_price / market.market_price_median
-        current_value_adjusted_relative = current_relative / item.quality_index
 
-        market_multiplier = self._market_multiplier(market)
-        competitive_multiplier = self._competitive_multiplier(market)
+        # Baseline describes the period behind sales_last_30/90; forecast market describes
+        # the period for which we recommend the price. If baseline is not provided,
+        # we assume a normal market (1.0). This keeps market_demand_index meaningful.
+        baseline_market_price = request.baseline_market_price_median or market.market_price_median
+        baseline_relative = item.current_price / baseline_market_price
+        baseline_value_adjusted_relative = baseline_relative / item.quality_index
 
-        current_price_response = self._price_response(current_value_adjusted_relative, elasticity)
-        denominator = max(market_multiplier * competitive_multiplier * current_price_response, 1e-6)
+        forecast_market_multiplier = self._market_multiplier(market)
+        forecast_competitive_multiplier = self._competitive_multiplier(market)
+        baseline_market_multiplier = request.baseline_market_demand_index
+        baseline_competitive_multiplier = self._competitive_multiplier_from_values(
+            request.baseline_promo_share,
+            request.baseline_availability_index,
+        )
+
+        baseline_price_response = self._price_response(baseline_value_adjusted_relative, elasticity)
+        denominator = max(baseline_market_multiplier * baseline_competitive_multiplier * baseline_price_response, 1e-6)
         normalized_base_demand = observed_demand / denominator if observed_demand > 0 else self._fallback_base_demand(item, request.horizon_days)
 
         demand_curve: List[DemandPoint] = []
@@ -488,7 +629,7 @@ class DemandCurveSkill:
             relative_price = price / market.market_price_median
             value_adjusted_relative = relative_price / item.quality_index
             price_response = self._price_response(value_adjusted_relative, elasticity)
-            demand = normalized_base_demand * market_multiplier * competitive_multiplier * price_response
+            demand = normalized_base_demand * forecast_market_multiplier * forecast_competitive_multiplier * price_response
 
             # Для услуг ограничиваем прогноз физической мощностью, если она передана.
             capacity_note = []
@@ -519,10 +660,12 @@ class DemandCurveSkill:
         diagnostics = {
             "observed_demand_for_horizon": round(observed_demand, 2),
             "normalized_base_demand": round(normalized_base_demand, 2),
-            "market_multiplier": round(market_multiplier, 4),
-            "competitive_multiplier": round(competitive_multiplier, 4),
-            "current_price_response": round(current_price_response, 4),
-            "formula": "Q(p)=base * market_multiplier * competitive_multiplier * (value_adjusted_relative_price ** elasticity)",
+            "baseline_market_multiplier": round(baseline_market_multiplier, 4),
+            "baseline_competitive_multiplier": round(baseline_competitive_multiplier, 4),
+            "baseline_price_response": round(baseline_price_response, 4),
+            "forecast_market_multiplier": round(forecast_market_multiplier, 4),
+            "forecast_competitive_multiplier": round(forecast_competitive_multiplier, 4),
+            "formula": "Q(p)=base * forecast_market_multiplier * forecast_competitive_multiplier * (value_adjusted_relative_price ** elasticity)",
         }
 
         return DemandCurveResponse(
@@ -589,14 +732,19 @@ class DemandCurveSkill:
         return max(1.0, horizon_days / 3)
 
     def _market_multiplier(self, market: MarketContext) -> float:
-        # market_demand_index уже собирает прокси-сигналы спроса и сезонность на этапе расчёта market_context.
+        # В MVP market_demand_index уже считается итоговым индексом общего спроса.
+        # seasonality_index хранится отдельно для объяснения и расчёта market_demand_index,
+        # но здесь не умножается повторно, чтобы не было двойного учёта сезонности.
         return market.market_demand_index
 
     def _competitive_multiplier(self, market: MarketContext) -> float:
+        return self._competitive_multiplier_from_values(market.promo_share, market.availability_index)
+
+    def _competitive_multiplier_from_values(self, promo_share: float, availability_index: float) -> float:
         # Промо конкурентов снижает нашу долю спроса.
-        promo_factor = 1 - 0.30 * market.promo_share
+        promo_factor = 1 - 0.30 * promo_share
         # Если у конкурентов низкая доступность, часть спроса переходит к нам.
-        availability_factor = 1 + 0.20 * (1 - market.availability_index)
+        availability_factor = 1 + 0.20 * (1 - availability_index)
         return clamp(promo_factor * availability_factor, 0.2, 1.5)
 
     def _price_response(self, value_adjusted_relative_price: float, elasticity: float) -> float:
@@ -604,11 +752,9 @@ class DemandCurveSkill:
         return rel ** elasticity
 
     def _point_confidence(self, item: ItemData, market: MarketContext, price: float) -> float:
-        confidence = market.confidence * market.coverage_score
-        if market.data_freshness_days > 30:
-            confidence *= 0.75
-        elif market.data_freshness_days > 14:
-            confidence *= 0.88
+        # market.confidence should already include source coverage and data freshness.
+        # Do not multiply coverage/freshness twice here; only add model-specific penalties.
+        confidence = market.confidence
 
         if item.sales_last_90_days < 20:
             confidence *= 0.70
@@ -634,10 +780,8 @@ class DemandCurveSkill:
         return notes
 
 
-# ============================================================
-# Price optimizer skill
-# ============================================================
-
+# =====================================================# Price optimizer skill
+# =====================================================
 
 class PriceOptimizerSkill:
     version = "price_optimizer_v1.0.0"
@@ -676,24 +820,30 @@ class PriceOptimizerSkill:
                 feasible_points.append(point)
 
         if not feasible_points:
-            # Берём ближайшую допустимую цену как fallback.
+            # Берём ближайшую точку кривой и принудительно приводим цену к допустимой границе.
             warnings.append("Нет точек кривой, полностью удовлетворяющих ограничениям; выбран ближайший допустимый вариант.")
-            selected = self._fallback_point(request.demand_curve, lower_bound, upper_bound)
+            selected = self._fallback_point(request.demand_curve, lower_bound, upper_bound, item)
         else:
             selected = self._select_by_goal(feasible_points, request.business_goal, item)
 
         rounded_price = self._round_price(selected.price, constraints.price_ending)
-        rounded_price = clamp(rounded_price, lower_bound, upper_bound)
-        if abs(rounded_price - selected.price) > 0.001:
+        bounded_price = clamp(rounded_price, lower_bound, upper_bound)
+        if abs(bounded_price - rounded_price) > 0.001:
+            warnings.append("Цена после округления была скорректирована до допустимой границы.")
+        if abs(bounded_price - selected.price) > 0.001:
             # После округления и clamp пересчитываем финансовые показатели приближённо на выбранном спросе.
-            selected = selected.model_copy(
-                update={
-                    "price": rounded_price,
-                    "expected_revenue": round(rounded_price * selected.expected_demand, 2),
-                    "expected_gross_profit": round((rounded_price - item.unit_cost) * selected.expected_demand, 2),
-                    "margin_percent": round(safe_div(rounded_price - item.unit_cost, rounded_price, 0) * 100, 2),
-                }
-            )
+            selected = self._with_price(selected, bounded_price, item)
+
+        target_demand = self._goal_target_demand(request.business_goal, item, request.demand_curve)
+        if target_demand and target_demand > 0:
+            deviation = abs(selected.expected_demand - target_demand) / target_demand
+            if deviation > 0.25:
+                warnings.append(
+                    f"Целевой спрос по бизнес-цели ({target_demand:.1f}) недостижим в рамках текущих "
+                    f"ограничений цены; фактический прогнозный спрос при рекомендованной цене — "
+                    f"{selected.expected_demand:.1f}. Рассмотрите смягчение max_price_increase_percent / "
+                    f"max_price_decrease_percent, либо ручной пересмотр остатка/мощности."
+                )
 
         is_reliable = selected.confidence >= constraints.min_confidence_for_apply
         explanation = self._explain_selection(request, selected, lower_bound, upper_bound)
@@ -743,6 +893,16 @@ class PriceOptimizerSkill:
             min_margin_percent = 95
         return unit_cost / (1 - min_margin_percent / 100)
 
+    def _goal_target_demand(
+        self, goal: BusinessGoal, item: ItemData, points: List[DemandPoint]
+    ) -> Optional[float]:
+        """Целевой спрос, которого пытается достичь бизнес-цель (если применимо)."""
+        if goal == BusinessGoal.CLEAR_STOCK and item.stock_quantity is not None:
+            return min(item.stock_quantity, max(p.expected_demand for p in points))
+        if goal == BusinessGoal.MAXIMIZE_UTILIZATION and item.available_capacity is not None:
+            return item.available_capacity * 0.85
+        return None
+
     def _select_by_goal(self, points: List[DemandPoint], goal: BusinessGoal, item: ItemData) -> DemandPoint:
         if goal == BusinessGoal.MAXIMIZE_PROFIT:
             return max(points, key=lambda p: (p.expected_gross_profit, p.confidence))
@@ -766,8 +926,20 @@ class PriceOptimizerSkill:
             return max(points, key=lambda p: p.expected_demand)
         return max(points, key=lambda p: p.expected_gross_profit)
 
-    def _fallback_point(self, points: List[DemandPoint], lower_bound: float, upper_bound: float) -> DemandPoint:
-        return min(points, key=lambda p: min(abs(p.price - lower_bound), abs(p.price - upper_bound)))
+    def _fallback_point(self, points: List[DemandPoint], lower_bound: float, upper_bound: float, item: ItemData) -> DemandPoint:
+        nearest = min(points, key=lambda p: min(abs(p.price - lower_bound), abs(p.price - upper_bound)))
+        bounded_price = clamp(nearest.price, lower_bound, upper_bound)
+        return self._with_price(nearest, bounded_price, item)
+
+    def _with_price(self, point: DemandPoint, price: float, item: ItemData) -> DemandPoint:
+        return point.model_copy(
+            update={
+                "price": round(price, 2),
+                "expected_revenue": round(price * point.expected_demand, 2),
+                "expected_gross_profit": round((price - item.unit_cost) * point.expected_demand, 2),
+                "margin_percent": round(safe_div(price - item.unit_cost, price, 0) * 100, 2),
+            }
+        )
 
     def _round_price(self, price: float, ending: Optional[float]) -> float:
         if ending is None:
@@ -798,10 +970,8 @@ class PriceOptimizerSkill:
         return explanation
 
 
-# ============================================================
-# Recommendation orchestrator
-# ============================================================
-
+# =====================================================# Recommendation orchestrator
+# =====================================================
 
 demand_skill = DemandCurveSkill()
 optimizer_skill = PriceOptimizerSkill()
@@ -816,6 +986,10 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
         horizon_days=request.horizon_days,
         price_grid=request.price_grid,
         elasticity_override=request.elasticity_override,
+        baseline_market_price_median=request.baseline_market_price_median,
+        baseline_market_demand_index=request.baseline_market_demand_index,
+        baseline_promo_share=request.baseline_promo_share,
+        baseline_availability_index=request.baseline_availability_index,
     )
     curve_response = demand_skill.forecast(curve_request)
 
@@ -866,6 +1040,8 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
         item_id=item.item_id,
         item_name=item.item_name,
         item_type=item.item_type.value,
+        price_unit=item.price_unit.value,
+        currency=item.currency,
         market_category=market.market_category,
         business_goal=request.business_goal.value,
         current_price=optimization.current_price,
@@ -879,15 +1055,7 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
         is_reliable=optimization.is_reliable,
         demand_curve=curve_response.demand_curve,
         elasticity=curve_response.elasticity,
-        market_context_summary={
-            "market_price_median": market.market_price_median,
-            "market_demand_index": market.market_demand_index,
-            "promo_share": market.promo_share,
-            "availability_index": market.availability_index,
-            "seasonality_index": market.seasonality_index,
-            "data_freshness_days": market.data_freshness_days,
-            "confidence": market.confidence,
-        },
+        market_context_summary=market.model_dump(exclude_none=True),
         explanation={
             "summary": optimization.explanation,
             "positive_factors": positive,
@@ -901,10 +1069,8 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
     )
 
 
-# ============================================================
-# API
-# ============================================================
-
+# =====================================================# API
+# =====================================================
 
 @app.get("/")
 async def root() -> Dict[str, Any]:
@@ -916,6 +1082,8 @@ async def root() -> Dict[str, Any]:
             "POST /skills/forecast_demand_curve",
             "POST /skills/optimize_price",
             "POST /skills/recommend_price",
+            "POST /market/calculate_indicators",
+            "POST /market/calculate_indicators/export_1c",
         ],
         "docs": "/docs",
     }
@@ -923,7 +1091,19 @@ async def root() -> Dict[str, Any]:
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
+    """Liveness — процесс жив. Не проверяет внешние зависимости (их пока нет)."""
     return {"status": "ok", "service": SERVICE_NAME, "version": APP_VERSION, "timestamp": now_iso()}
+
+
+@app.get("/ready")
+async def ready() -> Dict[str, Any]:
+    """Readiness — сервис сконфигурирован и готов принимать трафик."""
+    checks = {
+        "auth_configured": bool(API_TOKEN) or not IS_PRODUCTION,
+        "cors_configured": bool(ALLOWED_ORIGINS) or not IS_PRODUCTION,
+    }
+    ok = all(checks.values())
+    return {"status": "ok" if ok else "degraded", "checks": checks, "timestamp": now_iso()}
 
 
 @app.get("/model_info")
@@ -935,14 +1115,23 @@ async def model_info(_: None = Depends(verify_api_token)) -> Dict[str, Any]:
             "optimize_price": optimizer_skill.version,
             "recommend_price": "orchestrator",
         },
-        "core_formula": "Q(p)=base * market_multiplier * competitive_multiplier * (value_adjusted_relative_price ** elasticity)",
+        "core_formula": "Q(p)=base * forecast_market_multiplier * forecast_competitive_multiplier * (value_adjusted_relative_price ** elasticity)",
         "note": "MVP uses calibrated elasticity model. Production should train elasticity/demand models on history + market indicators.",
     }
 
 
+def _rate_limit(spec: str) -> Callable:
+    """No-op decorator when slowapi isn't installed, so routes stay importable."""
+    if _SLOWAPI_AVAILABLE:
+        return limiter.limit(spec)
+    return lambda func: func
+
+
 @app.post("/market/calculate_indicators", response_model=MarketIndicatorsCalculationResponse)
+@_rate_limit(RATE_LIMIT)
 async def calculate_market_indicators(
-    request: MarketIndicatorsCalculationRequest,
+    request: Request,
+    body: MarketIndicatorsCalculationRequest,
     _: None = Depends(verify_api_token),
 ) -> MarketIndicatorsCalculationResponse:
     """
@@ -952,31 +1141,49 @@ async def calculate_market_indicators(
     может отправить набор наблюдений, а сервис вернёт нормализованные индикаторы
     для регистра 1С `AI_РыночныеИндикаторы`.
     """
-    return calculate_market_context_from_observations(request)
+    return calculate_market_context_from_observations(body)
+
+
+@app.post("/market/calculate_indicators/export_1c", response_model=List[Dict[str, Any]])
+@_rate_limit(RATE_LIMIT)
+async def calculate_market_indicators_export_1c(
+    request: Request,
+    body: MarketIndicatorsCalculationRequest,
+    _: None = Depends(verify_api_token),
+) -> List[Dict[str, Any]]:
+    """Возвращает массив записей, совместимый с 1С loader `AI_РыночныеИндикаторы`."""
+    result = calculate_market_context_from_observations(body)
+    return [result.one_c_indicator_record]
 
 
 @app.post("/skills/forecast_demand_curve", response_model=DemandCurveResponse)
+@_rate_limit(RATE_LIMIT)
 async def forecast_demand_curve(
-    request: DemandCurveRequest,
+    request: Request,
+    body: DemandCurveRequest,
     _: None = Depends(verify_api_token),
 ) -> DemandCurveResponse:
-    return demand_skill.forecast(request)
+    return demand_skill.forecast(body)
 
 
 @app.post("/skills/optimize_price", response_model=PriceOptimizationResponse)
+@_rate_limit(RATE_LIMIT)
 async def optimize_price(
-    request: PriceOptimizationRequest,
+    request: Request,
+    body: PriceOptimizationRequest,
     _: None = Depends(verify_api_token),
 ) -> PriceOptimizationResponse:
-    return optimizer_skill.optimize(request)
+    return optimizer_skill.optimize(body)
 
 
 @app.post("/skills/recommend_price", response_model=PriceRecommendationResponse)
+@_rate_limit(RATE_LIMIT)
 async def recommend_price(
-    request: PriceRecommendationRequest,
+    request: Request,
+    body: PriceRecommendationRequest,
     _: None = Depends(verify_api_token),
 ) -> PriceRecommendationResponse:
-    return build_recommendation(request)
+    return build_recommendation(body)
 
 
 if __name__ == "__main__":
