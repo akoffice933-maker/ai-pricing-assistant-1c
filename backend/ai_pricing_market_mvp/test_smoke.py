@@ -13,8 +13,8 @@ from main import app
 client = TestClient(app)
 
 
-def base_item():
-    return {
+def base_item(**overrides):
+    item = {
         "item_id": "000000123",
         "item_type": "product",
         "item_name": "Наушники X200",
@@ -25,6 +25,8 @@ def base_item():
         "sales_last_90_days": 620,
         "quality_index": 1.08,
     }
+    item.update(overrides)
+    return item
 
 
 def base_market(market_demand_index=1.18):
