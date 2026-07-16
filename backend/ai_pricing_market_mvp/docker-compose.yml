@@ -5,4 +5,6 @@ services:
       - "8000:8000"
     environment:
       PYTHONUNBUFFERED: "1"
+      # APP_ENV: "production"
       # AI_PRICING_API_TOKEN: "secret-token"
+      # AI_PRICING_CORS_ORIGINS: "https://your-frontend.example.com"

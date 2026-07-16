@@ -34,7 +34,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 APP_VERSION = "2.0.0-market-mvp"
 SERVICE_NAME = "AI Pricing Assistant — Market Demand MVP"
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 API_TOKEN = os.getenv("AI_PRICING_API_TOKEN")
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("AI_PRICING_CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+
+if APP_ENV in {"production", "prod"} and not API_TOKEN:
+    raise RuntimeError("AI_PRICING_API_TOKEN must be set when APP_ENV=production")
 
 app = FastAPI(
     title=SERVICE_NAME,
@@ -47,9 +56,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -290,7 +299,7 @@ class PriceOptimizationRequest(BaseModel):
     business_goal: BusinessGoal = BusinessGoal.MAXIMIZE_PROFIT
     item: ItemData
     market_context: MarketContext
-    demand_curve: List[DemandPoint]
+    demand_curve: List[DemandPoint] = Field(..., min_length=1)
     constraints: PricingConstraints = Field(default_factory=PricingConstraints)
 
 
@@ -580,9 +589,8 @@ class DemandCurveSkill:
         return max(1.0, horizon_days / 3)
 
     def _market_multiplier(self, market: MarketContext) -> float:
-        # market_demand_index — общий индекс спроса категории.
-        # seasonality_index можно считать отдельным множителем, если он не включён в market_demand_index.
-        return market.market_demand_index * market.seasonality_index
+        # market_demand_index уже собирает прокси-сигналы спроса и сезонность на этапе расчёта market_context.
+        return market.market_demand_index
 
     def _competitive_multiplier(self, market: MarketContext) -> float:
         # Промо конкурентов снижает нашу долю спроса.
@@ -675,8 +683,9 @@ class PriceOptimizerSkill:
             selected = self._select_by_goal(feasible_points, request.business_goal, item)
 
         rounded_price = self._round_price(selected.price, constraints.price_ending)
+        rounded_price = clamp(rounded_price, lower_bound, upper_bound)
         if abs(rounded_price - selected.price) > 0.001:
-            # После округления пересчитываем финансовые показатели приближённо на выбранном спросе.
+            # После округления и clamp пересчитываем финансовые показатели приближённо на выбранном спросе.
             selected = selected.model_copy(
                 update={
                     "price": rounded_price,
@@ -751,7 +760,7 @@ class PriceOptimizerSkill:
             acceptable = [p for p in points if p.expected_demand >= max_demand * 0.55]
             return max(acceptable or points, key=lambda p: (p.price, p.margin_percent))
         if goal == BusinessGoal.MAXIMIZE_UTILIZATION:
-            if item.available_capacity:
+            if item.available_capacity is not None:
                 target_demand = item.available_capacity * 0.85
                 return min(points, key=lambda p: (abs(p.expected_demand - target_demand), -p.expected_gross_profit))
             return max(points, key=lambda p: p.expected_demand)
