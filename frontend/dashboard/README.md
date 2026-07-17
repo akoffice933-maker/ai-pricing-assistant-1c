@@ -43,6 +43,7 @@ npm run build   # -> dist/
 Либо через Docker (весь стек сразу, из корня репозитория):
 
 ```bash
+cp .env.example .env   # заполнить реальными значениями; без файла docker compose упадёт
 docker compose up --build
 ```
 

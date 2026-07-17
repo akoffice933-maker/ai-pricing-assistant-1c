@@ -18,8 +18,6 @@ AI Pricing Market MVP
     http://localhost:8000/docs
 """
 
-from __future__ import annotations
-
 import logging
 import math
 import os
@@ -31,7 +29,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -837,7 +835,13 @@ class PriceOptimizerSkill:
             selected = self._with_price(selected, bounded_price, item)
 
         target_demand = self._goal_target_demand(request.business_goal, item, request.demand_curve)
-        if target_demand and target_demand > 0:
+        if target_demand is not None and target_demand <= 0:
+            warnings.append(
+                "Остаток/доступная мощность равны нулю — цель бизнес-цели вырождена (продавать нечего). "
+                "Рекомендация не отражает содержательную оптимизацию; требуется ручной пересмотр "
+                "остатка/мощности, а не автоматическое применение цены."
+            )
+        elif target_demand is not None and target_demand > 0:
             deviation = abs(selected.expected_demand - target_demand) / target_demand
             if deviation > 0.25:
                 warnings.append(
@@ -1138,7 +1142,7 @@ def _rate_limit(spec: str) -> Callable:
 @_rate_limit(RATE_LIMIT)
 async def calculate_market_indicators(
     request: Request,
-    body: MarketIndicatorsCalculationRequest,
+    body: MarketIndicatorsCalculationRequest = Body(...),
     _: None = Depends(verify_api_token),
 ) -> MarketIndicatorsCalculationResponse:
     """
@@ -1155,7 +1159,7 @@ async def calculate_market_indicators(
 @_rate_limit(RATE_LIMIT)
 async def calculate_market_indicators_export_1c(
     request: Request,
-    body: MarketIndicatorsCalculationRequest,
+    body: MarketIndicatorsCalculationRequest = Body(...),
     _: None = Depends(verify_api_token),
 ) -> List[Dict[str, Any]]:
     """Возвращает массив записей, совместимый с 1С loader `AI_РыночныеИндикаторы`."""
@@ -1167,7 +1171,7 @@ async def calculate_market_indicators_export_1c(
 @_rate_limit(RATE_LIMIT)
 async def forecast_demand_curve(
     request: Request,
-    body: DemandCurveRequest,
+    body: DemandCurveRequest = Body(...),
     _: None = Depends(verify_api_token),
 ) -> DemandCurveResponse:
     return demand_skill.forecast(body)
@@ -1177,7 +1181,7 @@ async def forecast_demand_curve(
 @_rate_limit(RATE_LIMIT)
 async def optimize_price(
     request: Request,
-    body: PriceOptimizationRequest,
+    body: PriceOptimizationRequest = Body(...),
     _: None = Depends(verify_api_token),
 ) -> PriceOptimizationResponse:
     return optimizer_skill.optimize(body)
@@ -1187,7 +1191,7 @@ async def optimize_price(
 @_rate_limit(RATE_LIMIT)
 async def recommend_price(
     request: Request,
-    body: PriceRecommendationRequest,
+    body: PriceRecommendationRequest = Body(...),
     _: None = Depends(verify_api_token),
 ) -> PriceRecommendationResponse:
     return build_recommendation(body)

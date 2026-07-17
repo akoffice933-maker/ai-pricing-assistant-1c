@@ -34,7 +34,7 @@ async function request(path, { method = "GET", body } = {}) {
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
-  } catch (err) {
+  } catch {
     throw new ApiError(
       `Не удалось подключиться к ${baseUrl}. Проверьте, что сервис запущен и адрес указан верно.`,
       0,

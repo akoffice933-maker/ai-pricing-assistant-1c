@@ -370,3 +370,12 @@ def test_recommend_price_exposes_price_bounds_and_rejected_points():
     assert data["price_bounds"]["lower_bound"] <= data["price_bounds"]["upper_bound"]
     assert "rejected_points" in data
     assert isinstance(data["rejected_points"], list)
+
+
+def test_maximize_utilization_warns_when_capacity_is_zero():
+    item = base_item(item_type="service", available_capacity=0)
+    payload = {"business_goal": "maximize_utilization", "item": item, "market_context": base_market()}
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert any("вырождена" in w for w in data["warnings"])
