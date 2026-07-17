@@ -12,6 +12,7 @@ Run from this directory:
 import pytest
 from fastapi.testclient import TestClient
 
+import main
 from main import app
 from test_smoke import base_item, base_market
 
@@ -379,3 +380,33 @@ def test_maximize_utilization_warns_when_capacity_is_zero():
     assert response.status_code == 200
     data = response.json()
     assert any("вырождена" in w for w in data["warnings"])
+
+
+def test_market_context_rejects_inconsistent_percentiles():
+    market = base_market()
+    market["market_price_min"] = 300  # выше median — несогласовано
+    payload = {"item": base_item(), "market_context": market}
+    response = client.post("/skills/forecast_demand_curve", json=payload)
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# /ready — формат CORS origins
+# ---------------------------------------------------------------------------
+
+
+def test_origin_looks_valid_helper():
+    assert main._origin_looks_valid("https://example.com") is True
+    assert main._origin_looks_valid("http://localhost:5173") is True
+    assert main._origin_looks_valid("*") is True
+    assert main._origin_looks_valid("example.com") is False  # нет схемы
+    assert main._origin_looks_valid("https://example.com/") is False  # лишний слэш
+    assert main._origin_looks_valid("https://exa mple.com") is False  # пробел
+
+
+def test_ready_exposes_allowed_origins_list():
+    response = client.get("/ready")
+    assert response.status_code == 200
+    data = response.json()
+    assert "allowed_origins" in data
+    assert "cors_origins_look_valid" in data["checks"]

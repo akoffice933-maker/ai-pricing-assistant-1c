@@ -1,18 +1,41 @@
 const STORAGE_KEY = "ai_pricing_dashboard_settings";
 
-export function loadSettings() {
+// In-memory copy — источник истины на время жизни вкладки. localStorage используется
+// только как персистентный кэш для localhost-backend (см. saveSettings).
+let memorySettings = null;
+
+function isLocalBaseUrl(baseUrl) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { baseUrl: "http://localhost:8000", token: "" };
-    return JSON.parse(raw);
+    const { hostname } = new URL(baseUrl);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
   } catch {
-    return { baseUrl: "http://localhost:8000", token: "" };
+    return false;
   }
 }
 
-export function saveSettings(settings) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+export function loadSettings() {
+  if (memorySettings) return memorySettings;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    memorySettings = raw ? JSON.parse(raw) : { baseUrl: "http://localhost:8000", token: "" };
+  } catch {
+    memorySettings = { baseUrl: "http://localhost:8000", token: "" };
+  }
+  return memorySettings;
 }
+
+export function saveSettings(settings) {
+  // Токен всегда доступен в памяти на время текущей вкладки (нужен для реальных запросов).
+  memorySettings = settings;
+  // На диск (localStorage, переживает перезагрузку страницы) токен пишем только если
+  // backend локальный. Если указан не-localhost backend — на диск сохраняем всё, кроме
+  // токена, чтобы снизить ущерб от возможной XSS-атаки на страницу дашборда: после
+  // перезагрузки страницы токен придётся ввести заново, но во время сессии он работает.
+  const toPersist = isLocalBaseUrl(settings.baseUrl) ? settings : { ...settings, token: "" };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+}
+
+export { isLocalBaseUrl };
 
 class ApiError extends Error {
   constructor(message, status, details) {

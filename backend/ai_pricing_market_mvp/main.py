@@ -74,6 +74,17 @@ RATE_LIMIT = os.getenv("AI_PRICING_RATE_LIMIT", "60/minute")
 
 LOG_LEVEL = os.getenv("AI_PRICING_LOG_LEVEL", "INFO").upper()
 
+
+def _origin_looks_valid(origin: str) -> bool:
+    """Грубая проверка формата origin — ловит частые опечатки (нет схемы, лишний слэш, пробелы)."""
+    if origin == "*":
+        return True
+    if not (origin.startswith("http://") or origin.startswith("https://")):
+        return False
+    if origin.endswith("/") or " " in origin:
+        return False
+    return True
+
 # ============================================================
 # Logging
 # ============================================================
@@ -88,6 +99,15 @@ if not logger.handlers:
         )
     )
     logger.addHandler(_handler)
+
+logger.info("startup environment=%s allowed_origins=%s", ENVIRONMENT, ALLOWED_ORIGINS or "(none)")
+_invalid_origins = [o for o in ALLOWED_ORIGINS if not _origin_looks_valid(o)]
+if _invalid_origins:
+    logger.warning(
+        "AI_PRICING_ALLOWED_ORIGINS содержит подозрительные значения (нет схемы http(s):// или "
+        "лишний слэш/пробел): %s — браузер всё равно будет блокировать запросы с этих origin.",
+        _invalid_origins,
+    )
 
 # ============================================================
 # App + middleware
@@ -290,10 +310,23 @@ class MarketContext(BaseModel):
     coverage_score: float = Field(1.0, ge=0, le=1)
     confidence: float = Field(0.8, ge=0, le=1)
 
-    @field_validator("market_price_max")
-    @classmethod
-    def validate_price_max(cls, value: Optional[float], info: Any) -> Optional[float]:
-        return value
+    @model_validator(mode="after")
+    def validate_price_percentiles_order(self) -> "MarketContext":
+        """Проверяет согласованность рыночных перцентилей цены, если они заданы."""
+        ordered = [
+            ("market_price_min", self.market_price_min),
+            ("market_price_p25", self.market_price_p25),
+            ("market_price_median", self.market_price_median),
+            ("market_price_p75", self.market_price_p75),
+            ("market_price_max", self.market_price_max),
+        ]
+        present = [(name, value) for name, value in ordered if value is not None]
+        for (name_a, value_a), (name_b, value_b) in zip(present, present[1:]):
+            if value_a > value_b:
+                raise ValueError(
+                    f"Рыночные перцентили цены несогласованы: {name_a}={value_a} > {name_b}={value_b}"
+                )
+        return self
 
 
 class PricingConstraints(BaseModel):
@@ -1109,12 +1142,19 @@ async def health() -> Dict[str, Any]:
 @app.get("/ready")
 async def ready() -> Dict[str, Any]:
     """Readiness — сервис сконфигурирован и готов принимать трафик."""
+    invalid_origins = [o for o in ALLOWED_ORIGINS if not _origin_looks_valid(o)]
     checks = {
         "auth_configured": bool(API_TOKEN) or not IS_PRODUCTION,
         "cors_configured": bool(ALLOWED_ORIGINS) or not IS_PRODUCTION,
+        "cors_origins_look_valid": not invalid_origins,
     }
     ok = all(checks.values())
-    return {"status": "ok" if ok else "degraded", "checks": checks, "timestamp": now_iso()}
+    return {
+        "status": "ok" if ok else "degraded",
+        "checks": checks,
+        "allowed_origins": ALLOWED_ORIGINS,
+        "timestamp": now_iso(),
+    }
 
 
 @app.get("/model_info")

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { loadSettings, saveSettings, api } from "../api";
+import { loadSettings, saveSettings, api, isLocalBaseUrl } from "../api";
 import { TextInput, Pill } from "./ui";
 
 export default function SettingsBar() {
@@ -81,7 +81,10 @@ export default function SettingsBar() {
             </button>
           </div>
           <p className="text-[11px] text-muted/70 mt-3 leading-relaxed">
-            Токен хранится только в этом браузере (localStorage) и отправляется напрямую в ваш backend.
+            {isLocalBaseUrl(settings.baseUrl)
+              ? "Токен хранится в этом браузере (localStorage) и отправляется напрямую в ваш backend."
+              : "Backend не локальный — токен НЕ сохраняется на диск (только в памяти этой вкладки, " +
+                "исчезнет при перезагрузке страницы). Это снижает риск кражи токена через XSS на странице дашборда."}
           </p>
         </form>
       )}
