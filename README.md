@@ -30,6 +30,25 @@ Market Context → Demand Curve → Price Optimization → 1С audit/action
 Полноценный клиент на React, который реально дёргает backend (`/skills/recommend_price`)
 и считает рекомендации по вашим данным — тот же API, которым пользуется 1С.
 
+**Открыть на GitHub Pages** (без установки, backend нужен только локально):
+
+- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/app/
+
+Дашборд по умолчанию стучится в `http://localhost:8000` — запустите backend локально
+(см. ниже) и добавьте origin GitHub Pages в его CORS-whitelist, иначе браузер заблокирует
+запросы:
+
+```bash
+# backend/ai_pricing_market_mvp/.env
+AI_PRICING_ALLOWED_ORIGINS=https://akoffice933-maker.github.io
+```
+
+Современные браузеры не блокируют запросы с `https`-страницы к `http://localhost` как
+mixed content (это стандартное исключение для локальной разработки) — так что связка
+«дашборд на Pages + backend на localhost» работает без доп. настроек TLS.
+
+Либо полностью локально:
+
 ```bash
 # 1. backend
 cd backend/ai_pricing_market_mvp && docker compose up --build
