@@ -1,7 +1,6 @@
 """
 AI Pricing Market MVP
-=====================
-
+==============
 Рабочий FastAPI-прототип новой архитектуры:
 
     Market Context -> Demand Curve -> Price Optimization -> 1C audit/action
@@ -54,7 +53,6 @@ SERVICE_NAME = "AI Pricing Assistant — Market Demand MVP"
 # ============================================================
 # Configuration (env-driven; see .env.example)
 # ============================================================
-
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 IS_PRODUCTION = ENVIRONMENT == "production"
 
@@ -67,7 +65,7 @@ if IS_PRODUCTION and not API_TOKEN:
         "Задайте переменную окружения перед запуском."
     )
 
-_default_origins = "" if IS_PRODUCTION else "*"
+_default_origins = ""
 ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv("AI_PRICING_ALLOWED_ORIGINS", _default_origins).split(",")
@@ -81,7 +79,6 @@ LOG_LEVEL = os.getenv("AI_PRICING_LOG_LEVEL", "INFO").upper()
 # ============================================================
 # Logging
 # ============================================================
-
 logger = logging.getLogger("ai_pricing")
 logger.setLevel(LOG_LEVEL)
 if not logger.handlers:
@@ -97,7 +94,6 @@ if not logger.handlers:
 # ============================================================
 # App + middleware
 # ============================================================
-
 app = FastAPI(
     title=SERVICE_NAME,
     version=APP_VERSION,
@@ -417,7 +413,7 @@ class PriceOptimizationRequest(BaseModel):
     business_goal: BusinessGoal = BusinessGoal.MAXIMIZE_PROFIT
     item: ItemData
     market_context: MarketContext
-    demand_curve: List[DemandPoint]
+    demand_curve: List[DemandPoint] = Field(..., min_length=1)
     constraints: PricingConstraints = Field(default_factory=PricingConstraints)
 
 
@@ -593,10 +589,8 @@ def calculate_market_context_from_observations(
     )
 
 
-# ============================================================
-# Demand curve skill
-# ============================================================
-
+# =====================================================# Demand curve skill
+# =====================================================
 
 class DemandCurveSkill:
     version = "demand_curve_v1.0.0-market-relative"
@@ -788,10 +782,8 @@ class DemandCurveSkill:
         return notes
 
 
-# ============================================================
-# Price optimizer skill
-# ============================================================
-
+# =====================================================# Price optimizer skill
+# =====================================================
 
 class PriceOptimizerSkill:
     version = "price_optimizer_v1.0.0"
@@ -909,7 +901,7 @@ class PriceOptimizerSkill:
         """Целевой спрос, которого пытается достичь бизнес-цель (если применимо)."""
         if goal == BusinessGoal.CLEAR_STOCK and item.stock_quantity is not None:
             return min(item.stock_quantity, max(p.expected_demand for p in points))
-        if goal == BusinessGoal.MAXIMIZE_UTILIZATION and item.available_capacity:
+        if goal == BusinessGoal.MAXIMIZE_UTILIZATION and item.available_capacity is not None:
             return item.available_capacity * 0.85
         return None
 
@@ -930,7 +922,7 @@ class PriceOptimizerSkill:
             acceptable = [p for p in points if p.expected_demand >= max_demand * 0.55]
             return max(acceptable or points, key=lambda p: (p.price, p.margin_percent))
         if goal == BusinessGoal.MAXIMIZE_UTILIZATION:
-            if item.available_capacity:
+            if item.available_capacity is not None:
                 target_demand = item.available_capacity * 0.85
                 return min(points, key=lambda p: (abs(p.expected_demand - target_demand), -p.expected_gross_profit))
             return max(points, key=lambda p: p.expected_demand)
@@ -980,10 +972,8 @@ class PriceOptimizerSkill:
         return explanation
 
 
-# ============================================================
-# Recommendation orchestrator
-# ============================================================
-
+# =====================================================# Recommendation orchestrator
+# =====================================================
 
 demand_skill = DemandCurveSkill()
 optimizer_skill = PriceOptimizerSkill()
@@ -1086,10 +1076,8 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
     )
 
 
-# ============================================================
-# API
-# ============================================================
-
+# =====================================================# API
+# =====================================================
 
 @app.get("/")
 async def root() -> Dict[str, Any]:

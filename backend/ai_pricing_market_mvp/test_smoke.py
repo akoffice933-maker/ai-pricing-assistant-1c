@@ -51,6 +51,12 @@ def test_health():
     assert response.json()["status"] == "ok"
 
 
+def test_cors_is_not_wildcard_for_arbitrary_origin():
+    response = client.get("/health", headers={"Origin": "https://evil.example"})
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") is None
+
+
 def test_calculate_market_indicators():
     payload = {
         "market_category": "wireless_headphones",
@@ -239,6 +245,17 @@ def test_forecast_demand_curve_rejects_single_point_price_grid():
         "price_grid": [179.0],
     }
     response = client.post("/skills/forecast_demand_curve", json=payload)
+    assert response.status_code == 422
+
+
+def test_optimize_price_rejects_empty_demand_curve():
+    payload = {
+        "business_goal": "maximize_profit",
+        "item": base_item(),
+        "market_context": base_market(),
+        "demand_curve": [],
+    }
+    response = client.post("/skills/optimize_price", json=payload)
     assert response.status_code == 422
 
 

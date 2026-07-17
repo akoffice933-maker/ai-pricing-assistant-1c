@@ -10,6 +10,28 @@ Market Context → Demand Curve → Price Optimization → 1С audit/action
 
 > LLM не считает цену. LLM может только управлять диалогом, извлекать параметры и вызывать проверяемые навыки. Расчёты выполняет FastAPI Skills Layer, а 1С хранит данные, документы, аудит и решение пользователя.
 
+## Веб-версия
+
+Ниже показан визуальный preview веб-интерфейса проекта: landing, dashboard и ROI-панель.
+
+Открыть веб-версию на GitHub Pages:
+
+- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/
+
+![Web preview](docs/web-preview.svg)
+
+Что видно в веб-версии:
+
+- landing с рыночным контекстом и рекомендацией цены;
+- dashboard с кривой спроса и ограничениями;
+- ROI-панель с экономическим эффектом и 1С-hand-off.
+
+Если хочешь открыть рабочий API-предпросмотр локально, используй:
+
+- `http://localhost:8000/docs` для Swagger;
+- `http://localhost:8000/health` для liveness;
+- `http://localhost:8000/ready` для readiness.
+
 ---
 
 ## Ключевая идея
