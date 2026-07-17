@@ -12,21 +12,34 @@ Market Context → Demand Curve → Price Optimization → 1С audit/action
 
 ## Веб-версия
 
-Ниже показан визуальный preview веб-интерфейса проекта: landing, dashboard и ROI-панель.
+Есть два разных веб-интерфейса — не путать один с другим:
 
-Открыть веб-версию на GitHub Pages:
+### Статический preview (GitHub Pages, без backend)
+
+Иллюстративный демо-макет — landing, dashboard и ROI-панель на **фиксированных
+примерных данных**, backend не требуется:
 
 - https://akoffice933-maker.github.io/ai-pricing-assistant-1c/
 
 ![Web preview](docs/web-preview.svg)
 
-Что видно в веб-версии:
+Хорош для быстрого показа идеи (например, на тендере), но не считает реальные цены.
 
-- landing с рыночным контекстом и рекомендацией цены;
-- dashboard с кривой спроса и ограничениями;
-- ROI-панель с экономическим эффектом и 1С-hand-off.
+### Рабочий дашборд (frontend/dashboard, живой API)
 
-Если хочешь открыть рабочий API-предпросмотр локально, используй:
+Полноценный клиент на React, который реально дёргает backend (`/skills/recommend_price`)
+и считает рекомендации по вашим данным — тот же API, которым пользуется 1С.
+
+```bash
+# 1. backend
+cd backend/ai_pricing_market_mvp && docker compose up --build
+# 2. дашборд (в новом терминале)
+cd frontend/dashboard && npm install && npm run dev
+```
+
+Подробнее: [`frontend/dashboard/README.md`](frontend/dashboard/README.md).
+
+Прямой доступ к API без UI:
 
 - `http://localhost:8000/docs` для Swagger;
 - `http://localhost:8000/health` для liveness;

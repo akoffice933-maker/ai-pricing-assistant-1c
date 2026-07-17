@@ -28,6 +28,12 @@ coverage/
 
 # Archives generated locally
 *.zip
+
+# Node / frontend
+node_modules/
+frontend/dashboard/dist/
+frontend/dashboard/.vite/
+npm-debug.log*
 *.7z
 *.rar
 

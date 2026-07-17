@@ -1,16 +1,66 @@
-# React + Vite
+# AI Pricing Assistant — Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Тонкий веб-клиент поверх backend `ai_pricing_market_mvp`. Вся расчётная логика (кривая
+спроса, оптимизация цены) остаётся в Python — дашборд только визуализирует ответы того
+же API, которым пользуется 1С.
 
-Currently, two official plugins are available:
+## Быстрый запуск (dev)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Backend должен быть запущен отдельно (см. `../../backend/ai_pricing_market_mvp/README.md`).
+CORS в backend закрыт по умолчанию — добавьте origin дашборда в `.env` backend'а:
 
-## React Compiler
+```bash
+# backend/ai_pricing_market_mvp/.env
+AI_PRICING_ALLOWED_ORIGINS=http://localhost:5173
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Затем:
 
-## Expanding the Oxlint configuration
+```bash
+cd frontend/dashboard
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Откройте `http://localhost:5173`. В шапке справа — «настройки»: укажите адрес backend'а
+(по умолчанию `http://localhost:8000`) и API-токен, если он задан на сервере
+(`AI_PRICING_API_TOKEN`). Токен хранится только в localStorage браузера.
+
+## Продакшен-сборка
+
+```bash
+npm run build   # -> dist/
+```
+
+Либо через Docker (весь стек сразу, из корня репозитория):
+
+```bash
+docker compose up --build
+```
+
+Дашборд будет на `http://localhost:8080`, backend — на `http://localhost:8000`.
+
+## Что внутри
+
+- **Форма рекомендации** — позиция (товар/услуга), рыночный контекст, бизнес-цель,
+  опциональные ограничения (маржа, лимиты изменения цены, округление).
+- **Результат** — рекомендованная цена, изменение в %, ожидаемые спрос/выручка/маржа,
+  статус (можно применять автоматически / требует согласования).
+- **График кривой спроса** — цена → ожидаемый спрос, с закрашенной зоной допустимых цен
+  (`price_bounds`) и отмеченной точкой рекомендации. Это визуализация ключевой идеи
+  проекта: цена не прогнозируется напрямую, а выбирается по кривой спроса.
+- **Объяснение и предупреждения** — те же `explanation`/`warnings`, что видит 1С-менеджер
+  в форме согласования.
+
+## Стек
+
+React 19 + Vite, Tailwind CSS, Recharts. Без внешнего state-менеджера — состояние формы
+и результата живёт в `App.jsx`.
+
+## Известные ограничения MVP
+
+- Один экран (рекомендация цены). Калькулятор рыночных индикаторов
+  (`/market/calculate_indicators`) и сравнение бизнес-целей пока доступны только через
+  Swagger (`/docs`) — хорошие кандидаты для следующей итерации.
+- Токен хранится в `localStorage` — приемлемо для внутреннего инструмента за периметром
+  (VPN/офисная сеть), но не рассчитано на публичный доступ без дополнительного слоя auth.
