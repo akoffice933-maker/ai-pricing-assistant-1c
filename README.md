@@ -12,27 +12,13 @@ Market Context → Demand Curve → Price Optimization → 1С audit/action
 
 ## Веб-версия
 
-Есть два разных веб-интерфейса — не путать один с другим:
-
-### Статический preview (GitHub Pages, без backend)
-
-Иллюстративный демо-макет — landing, dashboard и ROI-панель на **фиксированных
-примерных данных**, backend не требуется:
-
-- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/
-
-![Web preview](docs/web-preview.svg)
-
-Хорош для быстрого показа идеи (например, на тендере), но не считает реальные цены.
-
-### Рабочий дашборд (frontend/dashboard, живой API)
-
-Полноценный клиент на React, который реально дёргает backend (`/skills/recommend_price`)
-и считает рекомендации по вашим данным — тот же API, которым пользуется 1С.
+Веб-дашборд (`frontend/dashboard`) — тонкий клиент на React поверх backend
+(`/skills/recommend_price`), считает рекомендации по вашим данным через тот же API,
+которым пользуется 1С.
 
 **Открыть на GitHub Pages** (без установки, backend нужен только локально):
 
-- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/app/
+- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/
 
 Дашборд по умолчанию стучится в `http://localhost:8000` — запустите backend локально
 (см. ниже) и добавьте origin GitHub Pages в его CORS-whitelist, иначе браузер заблокирует

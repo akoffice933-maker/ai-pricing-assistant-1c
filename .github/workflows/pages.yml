@@ -36,16 +36,9 @@ jobs:
         working-directory: frontend/dashboard
         run: npm ci
 
-      - name: Build dashboard (subpath /app/)
+      - name: Build dashboard
         working-directory: frontend/dashboard
-        run: npx vite build --base=/ai-pricing-assistant-1c/app/
-
-      - name: Assemble Pages site
-        run: |
-          mkdir -p site
-          cp -r docs/. site/
-          mkdir -p site/app
-          cp -r frontend/dashboard/dist/. site/app/
+        run: npx vite build --base=/ai-pricing-assistant-1c/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -53,7 +46,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./site
+          path: ./frontend/dashboard/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

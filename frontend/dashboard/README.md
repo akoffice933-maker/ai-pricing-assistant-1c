@@ -6,10 +6,10 @@
 
 ## Открыть без установки
 
-- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/app/
+- https://akoffice933-maker.github.io/ai-pricing-assistant-1c/
 
 Деплоится автоматически (`.github/workflows/pages.yml`) при пуше в `main`. Нужен
-запущенный локально backend (см. корневой README, раздел «Рабочий дашборд») — сам по
+запущенный локально backend (см. корневой README, раздел «Веб-версия») — сам по
 себе статический хостинг Python не запускает.
 
 ## Быстрый запуск (dev)
