@@ -11,16 +11,46 @@ body {
 }
 
 ::selection {
-  background: #C0622A;
-  color: #14181B;
+  background: #d7ff3f;
+  color: #0a0c05;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2C3438 transparent;
+  scrollbar-color: #232a33 transparent;
 }
 
 .focus-ring:focus-visible {
-  outline: 2px solid #E08A52;
+  outline: 2px solid #d7ff3f;
   outline-offset: 2px;
+}
+
+/* ---- blueprint grid backdrop ---- */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(140, 160, 180, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 160, 180, 0.055) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 30%, transparent 100%);
+}
+
+/* ---- card hover lift ---- */
+.card-hover {
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.3s ease,
+    box-shadow 0.35s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(215, 255, 63, 0.35);
+  box-shadow: 0 20px 60px -30px rgba(215, 255, 63, 0.18);
+}
+
+@keyframes glowpulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.animate-glowpulse {
+  animation: glowpulse 3.2s ease-in-out infinite;
 }

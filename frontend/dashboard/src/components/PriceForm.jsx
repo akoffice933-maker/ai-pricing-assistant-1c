@@ -121,7 +121,7 @@ export default function PriceForm({ onSubmit, loading }) {
             <label
               key={g.value}
               className={`flex items-center justify-between px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
-                goal === g.value ? "border-accent bg-accentDim" : "border-line bg-panel2 hover:border-muted"
+                goal === g.value ? "border-lime/40 bg-lime/10" : "border-line bg-panel2 hover:border-line2"
               }`}
             >
               <div>

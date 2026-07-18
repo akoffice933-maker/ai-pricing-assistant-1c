@@ -75,7 +75,7 @@ export default function SettingsBar() {
             <Pill tone={statusTone}>{statusLabel}</Pill>
             <button
               type="submit"
-              className="bg-accent text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-accentSoft transition-colors"
+              className="bg-lime text-ink text-sm font-semibold px-4 py-2 rounded-lg hover:bg-limedim transition-colors"
             >
               Сохранить
             </button>
