@@ -180,19 +180,19 @@ def test_ready():
 
 
 def test_protected_endpoint_rejects_missing_token(monkeypatch):
-    monkeypatch.setattr(main, "API_TOKEN", "test-token")
+    monkeypatch.setattr(main.config, "API_TOKEN", "test-token")
     response = client.get("/model_info")
     assert response.status_code == 401
 
 
 def test_protected_endpoint_rejects_wrong_token(monkeypatch):
-    monkeypatch.setattr(main, "API_TOKEN", "test-token")
+    monkeypatch.setattr(main.config, "API_TOKEN", "test-token")
     response = client.get("/model_info", headers={"Authorization": "Bearer wrong-token"})
     assert response.status_code == 401
 
 
 def test_protected_endpoint_accepts_correct_token(monkeypatch):
-    monkeypatch.setattr(main, "API_TOKEN", "test-token")
+    monkeypatch.setattr(main.config, "API_TOKEN", "test-token")
     response = client.get("/model_info", headers={"Authorization": "Bearer test-token"})
     assert response.status_code == 200
 

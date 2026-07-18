@@ -120,10 +120,14 @@ backend/ai_pricing_market_mvp/
 | `POST /skills/forecast_demand_curve` | Строит кривую спроса `цена → ожидаемый спрос`. |
 | `POST /skills/optimize_price` | Выбирает цену по кривой спроса и бизнес-ограничениям. |
 | `POST /skills/recommend_price` | Оркестратор: строит кривую спроса и оптимизирует цену одним вызовом. |
+| `POST /skills/recommend_price/batch` | То же самое пакетно (до 200 позиций за вызов). |
 | `POST /market/calculate_indicators` | Нормализует сырые наблюдения рынка в `market_context`. |
 | `POST /market/calculate_indicators/export_1c` | Возвращает JSON-массив индикаторов для загрузки в 1С. |
 | `GET /health` | Liveness-проверка. |
 | `GET /ready` | Readiness-проверка (сконфигурирован ли auth/CORS). |
+
+Весь набор дублирован под `/v1` (например `/v1/skills/recommend_price`) — на будущее, под
+breaking changes в контракте; сейчас оба пути ведут в одну и ту же логику.
 
 ### Быстрый запуск (dev)
 

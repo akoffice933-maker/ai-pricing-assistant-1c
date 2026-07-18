@@ -13,6 +13,7 @@ WORKDIR /app
 
 COPY --from=build /root/.local /home/app/.local
 COPY main.py .
+COPY app ./app
 COPY examples ./examples
 COPY schemas ./schemas
 

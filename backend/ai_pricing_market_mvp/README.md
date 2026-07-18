@@ -19,8 +19,12 @@ FastAPI-сервис с тремя навыками:
 | `POST /skills/forecast_demand_curve` | Строит кривую спроса `цена → ожидаемый спрос` с учётом рыночных индикаторов. |
 | `POST /skills/optimize_price` | Выбирает цену по готовой кривой спроса и ограничениям. |
 | `POST /skills/recommend_price` | Оркестратор: строит кривую спроса и оптимизирует цену одним вызовом. |
+| `POST /skills/recommend_price/batch` | То же самое пакетно (до 200 позиций); некорректная позиция не роняет весь пакет. |
 | `POST /market/calculate_indicators` | Считает `market_context` из сырых рыночных наблюдений. |
 | `POST /market/calculate_indicators/export_1c` | Возвращает массив записей для загрузчика 1С `AI_РыночныеИндикаторы`. |
+
+Весь набор доступен и с префиксом `/v1` (`/v1/skills/recommend_price` и т.д.) — те же
+функции, версионирование на будущее под breaking changes в контракте.
 
 Поддерживаются:
 
@@ -34,6 +38,28 @@ FastAPI-сервис с тремя навыками:
 - бизнес-цели;
 - ограничения минимальной маржи и максимального изменения цены;
 - объяснение и JSON-аудит.
+
+## Структура кода
+
+```text
+main.py              # точка входа (uvicorn main:app); реэкспорт для обратной совместимости
+app/
+  config.py           # переменные окружения, логирование, fail-fast проверки
+  rate_limit.py        # slowapi wiring
+  security.py          # проверка Bearer-токена
+  utils.py              # now_iso/clamp/safe_div/percentile
+  schemas.py            # все Pydantic-модели
+  services/
+    demand_curve.py      # DemandCurveSkill
+    price_optimizer.py    # PriceOptimizerSkill
+    market_indicators.py   # расчёт market_context из наблюдений
+    recommendation.py       # оркестратор + batch
+  routers/
+    health.py              # /, /health, /ready, /model_info
+    market.py               # /market/*
+    skills.py                # /skills/* (включая batch)
+  server.py                  # сборка FastAPI app, middleware, роутеры (bare + /v1)
+```
 
 ## Быстрый запуск
 
