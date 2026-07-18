@@ -41,7 +41,7 @@ jobs:
         run: npx vite build --base=/ai-pricing-assistant-1c/
 
       - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
