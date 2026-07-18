@@ -1175,7 +1175,12 @@ async def model_info(_: None = Depends(verify_api_token)) -> Dict[str, Any]:
             "recommend_price": "orchestrator",
         },
         "core_formula": "Q(p)=base * forecast_market_multiplier * forecast_competitive_multiplier * (value_adjusted_relative_price ** elasticity)",
-        "note": "MVP uses calibrated elasticity model. Production should train elasticity/demand models on history + market indicators.",
+        "note": (
+            "Эластичность — калиброванная эвристика, НЕ обучена и не провалидирована на реальных "
+            "парах цена/спрос. market_demand_index без внешнего источника данных вырождается в "
+            "seasonality_index. Рекомендации — подсказка для человека, не источник истины; "
+            "автоматическое применение цены не предусмотрено."
+        ),
     }
 
 

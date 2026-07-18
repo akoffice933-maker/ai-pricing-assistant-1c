@@ -34,14 +34,20 @@ value_adjusted_relative_price = relative_price / quality_index
 
 ## Market demand index
 
-Если есть proxy-сигналы:
+**Ни один из proxy-сигналов ниже нигде в проекте не реализован.** Формула существует только на
+бумаге — `search_trend_index`, `lead_volume_index`, `category_views_index` нужно собирать и подавать
+отдельным pipeline'ом, которого пока нет. Единственный реально работающий путь — второй вариант
+(fallback), и он тихо подменяет «рыночный спрос» календарной сезонностью, а не реальным сигналом
+спроса.
+
+Если есть proxy-сигналы (пока — гипотетически):
 
 ```text
 market_demand_index = 0.75 × avg(search_trend_index, lead_volume_index, category_views_index)
                     + 0.25 × seasonality_index
 ```
 
-Если proxy-сигналов нет:
+Если proxy-сигналов нет (текущая реальность MVP):
 
 ```text
 market_demand_index = seasonality_index
