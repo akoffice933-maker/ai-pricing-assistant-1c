@@ -132,9 +132,17 @@ if _SLOWAPI_AVAILABLE:
     limiter = Limiter(key_func=get_remote_address, default_limits=[RATE_LIMIT])
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+elif IS_PRODUCTION:
+    # slowapi зафиксирован в requirements.txt как обязательная зависимость — если его нет
+    # в production, это признак сломанной установки, а не осознанного выбора. Как и с
+    # токеном, лучше не стартовать вообще, чем молча остаться без rate limiting.
+    raise RuntimeError(
+        "slowapi не установлен, а ENVIRONMENT=production. Rate limiting обязателен в проде — "
+        "проверьте, что requirements.txt установлен полностью (pip install -r requirements.txt)."
+    )
 else:  # pragma: no cover
     logger.warning(
-        "slowapi не установлен — rate limiting отключён. "
+        "slowapi не установлен — rate limiting отключён (допустимо только вне production). "
         "Добавьте slowapi в requirements.txt для production."
     )
 

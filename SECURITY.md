@@ -1,5 +1,17 @@
 # Security
 
+## Reporting a Vulnerability
+
+Если вы нашли уязвимость в этом репозитории — не открывайте публичный issue.
+Сообщите через GitHub Security Advisories:
+
+```text
+https://github.com/akoffice933-maker/ai-pricing-assistant-1c/security/advisories/new
+```
+
+Ответ — в течение разумного срока (проект в стадии MVP/pre-pilot, без формального SLA).
+Публичное раскрытие — после того как фикс выпущен и обновлён деплой.
+
 ## Secrets
 
 Не коммитьте в репозиторий:

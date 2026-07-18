@@ -410,3 +410,42 @@ def test_ready_exposes_allowed_origins_list():
     data = response.json()
     assert "allowed_origins" in data
     assert "cors_origins_look_valid" in data["checks"]
+
+
+# ---------------------------------------------------------------------------
+# Confidence-gating: низкая достоверность или превышение лимита роста цены
+# всегда уходят на ручное согласование, а не автоприменение
+# ---------------------------------------------------------------------------
+
+
+def test_low_confidence_forces_manual_review_action():
+    payload = {
+        "business_goal": "maximize_profit",
+        "item": base_item(),
+        "market_context": base_market() | {"confidence": 0.2},
+        "constraints": {"min_confidence_for_apply": 0.9},
+    }
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["is_reliable"] is False
+    assert data["recommended_action"]["type"] == "manual_review"
+    assert data["recommended_action"]["requires_approval"] is True
+
+
+def test_recommended_action_always_requires_approval_even_when_reliable():
+    payload = {"business_goal": "maximize_profit", "item": base_item(), "market_context": base_market()}
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    # Даже при высоком confidence AI не проводит документ сам — только человек.
+    assert data["recommended_action"]["requires_approval"] is True
+
+
+def test_stale_market_data_lowers_confidence_below_default_threshold():
+    stale_market = base_market() | {"data_freshness_days": 60, "coverage_score": 0.2}
+    payload = {"business_goal": "maximize_profit", "item": base_item(), "market_context": stale_market}
+    response = client.post("/skills/recommend_price", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["confidence"] < base_market()["confidence"]

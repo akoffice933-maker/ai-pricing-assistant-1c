@@ -1,0 +1,9 @@
+item_id,item_type,category,price,actual_demand,unit_cost,quality_index,sales_last_30_days,sales_last_90_days,market_price_median,market_demand_index,promo_share,availability_index,seasonality_index,data_freshness_days,coverage_score,confidence
+SKU-001,product,wireless_headphones,179,240,128,1.08,240,620,189,1.18,0.35,0.78,1.2,3,0.78,0.82
+SKU-001,product,wireless_headphones,195,205,128,1.08,240,620,189,1.18,0.35,0.78,1.2,3,0.78,0.82
+SKU-001,product,wireless_headphones,165,268,128,1.08,240,620,189,1.18,0.35,0.78,1.2,3,0.78,0.82
+SKU-002,product,wireless_headphones,210,140,150,0.92,180,470,189,0.95,0.5,0.6,0.9,10,0.6,0.65
+SKU-003,service,repair_service,45,90,25,1.0,90,240,50,1.05,0.1,0.9,1.0,5,0.85,0.88
+SKU-003,service,repair_service,55,72,25,1.0,90,240,50,1.05,0.1,0.9,1.0,5,0.85,0.88
+SKU-004,product,generator_diesel,85000,12,62000,1.15,12,34,89000,1.1,0.2,0.7,1.05,7,0.7,0.75
+SKU-004,product,generator_diesel,92000,9,62000,1.15,12,34,89000,1.1,0.2,0.7,1.05,7,0.7,0.75
