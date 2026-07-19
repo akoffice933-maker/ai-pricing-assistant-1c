@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { Terminal } from "lucide-react";
+import { Terminal, TrendingUp, LineChart, Scale } from "lucide-react";
 import SettingsBar from "./components/SettingsBar";
 import PriceForm from "./components/PriceForm";
 import ResultPanel from "./components/ResultPanel";
+import GoalComparePage from "./components/GoalComparePage";
+import MarketIndicatorsPage from "./components/MarketIndicatorsPage";
 import { api, ApiError } from "./api";
+
+const TABS = [
+  { key: "recommend", label: "Рекомендация", icon: TrendingUp },
+  { key: "market", label: "Рыночные индикаторы", icon: LineChart },
+  { key: "compare", label: "Сравнение целей", icon: Scale },
+];
 
 function Background() {
   return (
@@ -22,7 +30,30 @@ function Background() {
   );
 }
 
-export default function App() {
+function Nav({ tab, setTab }) {
+  return (
+    <nav className="flex items-center gap-1 border border-line rounded-lg bg-panel p-1">
+      {TABS.map((t) => {
+        const Icon = t.icon;
+        const active = tab === t.key;
+        return (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors focus-ring outline-none ${
+              active ? "bg-lime text-ink" : "text-mist hover:text-text"
+            }`}
+          >
+            <Icon size={13} strokeWidth={2.2} />
+            {t.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+function RecommendTab() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -47,11 +78,22 @@ export default function App() {
   }
 
   return (
+    <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 items-start">
+      <PriceForm onSubmit={handleSubmit} loading={loading} />
+      <ResultPanel result={result} error={error} loading={loading} />
+    </div>
+  );
+}
+
+export default function App() {
+  const [tab, setTab] = useState("recommend");
+
+  return (
     <div className="min-h-screen">
       <Background />
 
       <header className="border-b border-line/70 bg-ink/75 backdrop-blur-xl sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <span className="grid h-9 w-9 place-items-center rounded-lg border border-line bg-panel text-lime">
               <Terminal size={16} strokeWidth={2.2} />
@@ -65,15 +107,15 @@ export default function App() {
               </div>
             </div>
           </div>
+          <Nav tab={tab} setTab={setTab} />
           <SettingsBar />
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 items-start">
-          <PriceForm onSubmit={handleSubmit} loading={loading} />
-          <ResultPanel result={result} error={error} loading={loading} />
-        </div>
+        {tab === "recommend" && <RecommendTab />}
+        {tab === "market" && <MarketIndicatorsPage />}
+        {tab === "compare" && <GoalComparePage />}
       </main>
 
       <footer className="max-w-6xl mx-auto px-6 py-8 font-mono text-[10px] tracking-[0.1em] text-fog/70">
