@@ -100,6 +100,7 @@ export const api = {
   health: () => request("/health"),
   ready: () => request("/ready"),
   recommendPrice: (body) => request("/skills/recommend_price", { method: "POST", body }),
+  recommendPriceBatch: (body) => request("/skills/recommend_price/batch", { method: "POST", body }),
   forecastDemandCurve: (body) => request("/skills/forecast_demand_curve", { method: "POST", body }),
   calculateMarketIndicators: (body) =>
     request("/market/calculate_indicators", { method: "POST", body }),

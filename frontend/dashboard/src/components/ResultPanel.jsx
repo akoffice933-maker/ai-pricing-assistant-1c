@@ -1,12 +1,18 @@
+import { Suspense, lazy } from "react";
 import { Card, Pill } from "./ui";
-import DemandCurveChart from "./DemandCurveChart";
+
+const DemandCurveChart = lazy(() => import("./DemandCurveChart"));
+
+function ChartFallback() {
+  return <div className="h-64 flex items-center justify-center text-fog text-xs">Загрузка графика…</div>;
+}
 
 function fmt(n, digits = 0) {
   if (n === null || n === undefined) return "—";
   return n.toLocaleString("ru-RU", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-export default function ResultPanel({ result, error, loading }) {
+export default function ResultPanel({ result, error, loading, isDemo = false, onShowDemo }) {
   if (loading) {
     return (
       <Card>
@@ -25,6 +31,14 @@ export default function ResultPanel({ result, error, loading }) {
               <li key={i}>{(d.loc || []).join(" → ")}: {d.msg}</li>
             ))}
           </ul>
+        )}
+        {error.isConnectionError && onShowDemo && (
+          <button
+            onClick={onShowDemo}
+            className="mt-3 text-xs font-mono text-lime hover:text-limedim transition-colors border border-lime/30 rounded-md px-3 py-1.5"
+          >
+            Показать демо вместо этого
+          </button>
         )}
       </Card>
     );
@@ -45,6 +59,14 @@ export default function ResultPanel({ result, error, loading }) {
 
   return (
     <div className="space-y-4">
+      {isDemo && (
+        <div className="flex items-center gap-2 bg-warn/10 border border-warn/30 rounded-lg px-3 py-2">
+          <Pill tone="warn">Демо</Pill>
+          <span className="text-xs text-mist">
+            Это сохранённый пример ответа, а не живой расчёт — backend недоступен.
+          </span>
+        </div>
+      )}
       <Card>
         <div className="flex items-start justify-between">
           <div>
@@ -84,12 +106,14 @@ export default function ResultPanel({ result, error, loading }) {
       </Card>
 
       <Card title="Кривая спроса" subtitle="Цена → ожидаемый спрос; закрашена зона допустимых цен">
-        <DemandCurveChart
-          curve={result.demand_curve}
-          recommendedPrice={result.recommended_price}
-          currentPrice={result.current_price}
-          bounds={result.price_bounds}
-        />
+        <Suspense fallback={<ChartFallback />}>
+          <DemandCurveChart
+            curve={result.demand_curve}
+            recommendedPrice={result.recommended_price}
+            currentPrice={result.current_price}
+            bounds={result.price_bounds}
+          />
+        </Suspense>
       </Card>
 
       {result.warnings?.length > 0 && (

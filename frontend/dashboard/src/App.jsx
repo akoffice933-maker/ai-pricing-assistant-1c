@@ -1,17 +1,29 @@
-import { useState } from "react";
-import { Terminal, TrendingUp, LineChart, Scale } from "lucide-react";
+import { Suspense, lazy, useState } from "react";
+import { Terminal, TrendingUp, LineChart, Scale, Layers, Calculator } from "lucide-react";
 import SettingsBar from "./components/SettingsBar";
 import PriceForm from "./components/PriceForm";
 import ResultPanel from "./components/ResultPanel";
-import GoalComparePage from "./components/GoalComparePage";
-import MarketIndicatorsPage from "./components/MarketIndicatorsPage";
 import { api, ApiError } from "./api";
+import { DEMO_RESULT } from "./lib/demoData";
+
+// Ленивая загрузка: эти вкладки не нужны при первом заходе (по умолчанию открыта
+// «Рекомендация»), не тянем их код и recharts-зависимости в основной бандл.
+const GoalComparePage = lazy(() => import("./components/GoalComparePage"));
+const MarketIndicatorsPage = lazy(() => import("./components/MarketIndicatorsPage"));
+const BatchPage = lazy(() => import("./components/BatchPage"));
+const RoiCalculatorPage = lazy(() => import("./components/RoiCalculatorPage"));
 
 const TABS = [
   { key: "recommend", label: "Рекомендация", icon: TrendingUp },
   { key: "market", label: "Рыночные индикаторы", icon: LineChart },
   { key: "compare", label: "Сравнение целей", icon: Scale },
+  { key: "batch", label: "Пакетный расчёт", icon: Layers },
+  { key: "roi", label: "ROI", icon: Calculator },
 ];
+
+function TabFallback() {
+  return <div className="text-fog text-sm py-12 text-center">Загрузка…</div>;
+}
 
 function Background() {
   return (
@@ -57,17 +69,19 @@ function RecommendTab() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   async function handleSubmit(payload) {
     setLoading(true);
     setError(null);
+    setIsDemo(false);
     try {
       const data = await api.recommendPrice(payload);
       setResult(data);
     } catch (err) {
       setResult(null);
       if (err instanceof ApiError) {
-        setError({ message: err.message, details: err.details });
+        setError({ message: err.message, details: err.details, isConnectionError: err.status === 0 });
       } else {
         setError({ message: "Непредвиденная ошибка. Проверьте консоль браузера." });
       }
@@ -77,10 +91,31 @@ function RecommendTab() {
     }
   }
 
+  function showDemo() {
+    setError(null);
+    setResult(DEMO_RESULT);
+    setIsDemo(true);
+  }
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 items-start">
-      <PriceForm onSubmit={handleSubmit} loading={loading} />
-      <ResultPanel result={result} error={error} loading={loading} />
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-fog max-w-lg">
+          Backend не задеплоен на GitHub Pages — только статика. Чтобы посчитать реальную
+          рекомендацию, запустите backend локально (см. настройки справа сверху) — либо
+          посмотрите демо на примере из <code className="text-mist">examples/product_recommend_price.json</code>.
+        </p>
+        <button
+          onClick={showDemo}
+          className="shrink-0 ml-4 text-xs font-mono text-lime hover:text-limedim transition-colors border border-lime/30 rounded-md px-3 py-1.5"
+        >
+          Показать демо
+        </button>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 items-start">
+        <PriceForm onSubmit={handleSubmit} loading={loading} />
+        <ResultPanel result={result} error={error} loading={loading} isDemo={isDemo} onShowDemo={showDemo} />
+      </div>
     </div>
   );
 }
@@ -114,8 +149,12 @@ export default function App() {
 
       <main className="max-w-6xl mx-auto px-6 py-6">
         {tab === "recommend" && <RecommendTab />}
-        {tab === "market" && <MarketIndicatorsPage />}
-        {tab === "compare" && <GoalComparePage />}
+        <Suspense fallback={<TabFallback />}>
+          {tab === "market" && <MarketIndicatorsPage />}
+          {tab === "compare" && <GoalComparePage />}
+          {tab === "batch" && <BatchPage />}
+          {tab === "roi" && <RoiCalculatorPage />}
+        </Suspense>
       </main>
 
       <footer className="max-w-6xl mx-auto px-6 py-8 font-mono text-[10px] tracking-[0.1em] text-fog/70">
