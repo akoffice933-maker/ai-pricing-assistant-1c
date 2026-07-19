@@ -22,6 +22,7 @@ FastAPI-сервис с тремя навыками:
 | `POST /skills/recommend_price/batch` | То же самое пакетно (до 200 позиций); некорректная позиция не роняет весь пакет. |
 | `POST /market/calculate_indicators` | Считает `market_context` из сырых рыночных наблюдений. |
 | `POST /market/calculate_indicators/export_1c` | Возвращает массив записей для загрузчика 1С `AI_РыночныеИндикаторы`. |
+| `GET /metrics` | Prometheus-метрики (HTTP-трафик + бизнес-метрики рекомендаций). |
 
 Весь набор доступен и с префиксом `/v1` (`/v1/skills/recommend_price` и т.д.) — те же
 функции, версионирование на будущее под breaking changes в контракте.
@@ -194,6 +195,27 @@ python scripts/backtest_elasticity.py backend/ai_pricing_market_mvp/examples/bac
 чтобы показать, что харнесс запускается end-to-end. Он ничего не доказывает про
 точность модели — для реальной проверки нужна настоящая история продаж по позициям
 (формат колонок см. в докстринге скрипта).
+
+## Мониторинг
+
+`GET /metrics` отдаёт метрики в формате Prometheus без авторизации (скрейперы обычно не
+шлют Bearer-токен). **В production закрывайте доступ к нему на уровне сети** (firewall,
+internal-only route в reverse proxy) — не полагайтесь на app-level auth.
+
+Пример `scrape_config` для Prometheus:
+
+```yaml
+scrape_configs:
+  - job_name: ai-pricing-assistant
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["ai-pricing-market-mvp:8000"]
+```
+
+Что считается: `http_requests_total`/`http_request_duration_seconds` (по method/path/status),
+`price_recommendations_total` (по business_goal/is_reliable — удобно ловить долю
+рекомендаций, ушедших на ручное согласование), `price_recommendation_confidence`,
+`price_recommendation_batch_size`.
 
 ## Связь с 1С
 

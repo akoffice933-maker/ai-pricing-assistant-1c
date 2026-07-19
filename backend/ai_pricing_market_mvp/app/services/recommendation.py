@@ -13,6 +13,7 @@ from app.schemas import (
     PriceRecommendationRequest,
     PriceRecommendationResponse,
 )
+from app.metrics import BATCH_SIZE, RECOMMENDATION_CONFIDENCE, RECOMMENDATIONS_TOTAL
 from app.services.demand_curve import DemandCurveSkill
 from app.services.price_optimizer import PriceOptimizerSkill
 from app.utils import now_iso
@@ -79,6 +80,11 @@ def build_recommendation(request: PriceRecommendationRequest) -> PriceRecommenda
     if not negative:
         neutral.append("Критичных негативных факторов не выявлено.")
 
+    RECOMMENDATIONS_TOTAL.labels(
+        business_goal=request.business_goal.value, is_reliable=str(optimization.is_reliable)
+    ).inc()
+    RECOMMENDATION_CONFIDENCE.observe(optimization.confidence)
+
     return PriceRecommendationResponse(
         request_id=request.request_id,
         item_id=item.item_id,
@@ -127,6 +133,7 @@ def build_batch_recommendations(request: BatchPriceRecommendationRequest) -> Bat
     """
     results: List[BatchRecommendationItemResult] = []
     succeeded = 0
+    BATCH_SIZE.observe(len(request.items))
     for index, raw_item in enumerate(request.items):
         item_id = None
         if isinstance(raw_item, dict):

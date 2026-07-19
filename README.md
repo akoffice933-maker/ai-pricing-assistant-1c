@@ -10,6 +10,9 @@ Market Context → Demand Curve → Price Optimization → 1С audit/action
 
 > LLM не считает цену. LLM может только управлять диалогом, извлекать параметры и вызывать проверяемые навыки. Расчёты выполняет FastAPI Skills Layer, а 1С хранит данные, документы, аудит и решение пользователя.
 
+История изменений — в [`CHANGELOG.md`](CHANGELOG.md). Список команд для разработки —
+`make help`.
+
 ## Веб-версия
 
 Веб-дашборд (`frontend/dashboard`) — тонкий клиент на React поверх backend
@@ -125,6 +128,7 @@ backend/ai_pricing_market_mvp/
 | `POST /market/calculate_indicators/export_1c` | Возвращает JSON-массив индикаторов для загрузки в 1С. |
 | `GET /health` | Liveness-проверка. |
 | `GET /ready` | Readiness-проверка (сконфигурирован ли auth/CORS). |
+| `GET /metrics` | Prometheus-метрики (без авторизации — закрывать на уровне сети в проде). |
 
 Весь набор дублирован под `/v1` (например `/v1/skills/recommend_price`) — на будущее, под
 breaking changes в контракте; сейчас оба пути ведут в одну и ту же логику.

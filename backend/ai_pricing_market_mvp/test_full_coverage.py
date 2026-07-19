@@ -449,3 +449,23 @@ def test_stale_market_data_lowers_confidence_below_default_threshold():
     assert response.status_code == 200
     data = response.json()
     assert data["confidence"] < base_market()["confidence"]
+
+
+# ---------------------------------------------------------------------------
+# Prometheus /metrics
+# ---------------------------------------------------------------------------
+
+
+def test_metrics_endpoint_exposes_prometheus_format():
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["content-type"]
+    assert "http_requests_total" in response.text
+
+
+def test_metrics_records_recommendation_business_metrics():
+    payload = {"business_goal": "maximize_profit", "item": base_item(), "market_context": base_market()}
+    client.post("/skills/recommend_price", json=payload)
+    body = client.get("/metrics").text
+    assert "price_recommendations_total" in body
+    assert "price_recommendation_confidence" in body

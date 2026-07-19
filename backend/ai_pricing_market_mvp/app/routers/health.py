@@ -1,11 +1,12 @@
-"""Служебные эндпоинты: корень, liveness, readiness, инфо о модели."""
+"""Служебные эндпоинты: корень, liveness, readiness, инфо о модели, метрики."""
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 
 from app import config
 from app.config import APP_VERSION, SERVICE_NAME
+from app.metrics import render_latest
 from app.security import verify_api_token
 from app.services.recommendation import demand_skill, optimizer_skill
 from app.utils import now_iso
@@ -73,3 +74,10 @@ async def model_info(_: None = Depends(verify_api_token)) -> Dict[str, Any]:
             "автоматическое применение цены не предусмотрено."
         ),
     }
+
+
+@router.get("/metrics")
+async def metrics() -> Response:
+    """Prometheus-метрики. Без авторизации — см. docstring app/metrics.py про сетевую изоляцию."""
+    body, content_type = render_latest()
+    return Response(content=body, media_type=content_type)

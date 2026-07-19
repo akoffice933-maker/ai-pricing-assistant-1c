@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import ALLOWED_ORIGINS, APP_VERSION, SERVICE_NAME, logger
+from app.metrics import REQUEST_COUNT, REQUEST_DURATION_SECONDS
 from app.rate_limit import _SLOWAPI_AVAILABLE, RateLimitExceeded, _rate_limit_exceeded_handler, limiter
 from app.routers import health, market, skills
 
@@ -52,7 +53,8 @@ async def request_context_middleware(request: Request, call_next: Callable) -> R
         response = await call_next(request)
         return response
     finally:
-        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        duration_s = time.perf_counter() - start
+        duration_ms = round(duration_s * 1000, 2)
         status_code = response.status_code if response is not None else 500
         logger.info(
             "%s %s status=%s duration_ms=%s request_id=%s",
@@ -62,6 +64,11 @@ async def request_context_middleware(request: Request, call_next: Callable) -> R
             duration_ms,
             request_id,
         )
+        # /metrics сам себя не считает — иначе каждый scrape Prometheus раздувал бы
+        # счётчик собственных вызовов.
+        if request.url.path != "/metrics":
+            REQUEST_COUNT.labels(method=request.method, path=request.url.path, status=status_code).inc()
+            REQUEST_DURATION_SECONDS.labels(method=request.method, path=request.url.path).observe(duration_s)
         if response is not None:
             response.headers["X-Request-ID"] = request_id
 
